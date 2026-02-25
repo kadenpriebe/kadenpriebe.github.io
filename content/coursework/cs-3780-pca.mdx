@@ -1,0 +1,22 @@
+---
+title: "PCA + Orthogonal Transforms Explorer"
+course: "CS 3780"
+date: "2026-02-23"
+description: "An interactive tool to visualize Principal Component Analysis and how orthogonal transformations affect the covariance matrix."
+---
+
+I built this interactive explorer to better understand how PCA works under the hood, specifically focusing on the relationship between data rotation and the covariance matrix.
+
+<PCAExplorer />
+
+## How it was made
+
+This tool was created using React and SVG. The goal was to visualize:
+1. **Covariance Matrix**: How the spread and tilt of data are captured in a 2x2 matrix.
+2. **Orthogonal Transforms**: How rotation matrices preserve lengths and angles (O⊤O = I).
+3. **The Connection**: How rotating data by O transforms the covariance matrix Σ into OΣO⊤.
+
+### Key Learnings
+- Eigenvectors point along the principal components of the data.
+- Eigenvalues represent the variance along those components.
+- Orthogonal transformations are essentially "rigid" rotations or reflections.

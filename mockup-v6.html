@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaden Priebe — Full Vision v6</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #666666;
+    --light-muted: #999;
+    --border: rgba(0,0,0,0.06);
+    --border-hover: rgba(0,0,0,0.12);
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --hero-accent: #4f46e5;
+    --hero-soft: #eef2ff;
+    --about-accent: #0891b2;
+    --about-soft: #ecfeff;
+    --now-accent: #059669;
+    --now-soft: #ecfdf5;
+    --projects-accent: #d97706;
+    --projects-soft: #fffbeb;
+    --blog-accent: #7c3aed;
+    --blog-soft: #f5f3ff;
+    --links-accent: #e11d48;
+    --links-soft: #fff1f2;
+    --games-accent: #ea580c;
+    --games-soft: #fff7ed;
+  }
+
+  html { font-size: 15px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    height: 100vh;
+    overflow: hidden;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: -0.02em; }
+
+  /* ===== SELECTION COLORS (set via JS on page views) ===== */
+  .sel-hero ::selection { background: var(--hero-accent); color: #fff; }
+  .sel-about ::selection { background: var(--about-accent); color: #fff; }
+  .sel-now ::selection { background: var(--now-accent); color: #fff; }
+  .sel-projects ::selection { background: var(--projects-accent); color: #fff; }
+  .sel-blog ::selection { background: var(--blog-accent); color: #fff; }
+  .sel-links ::selection { background: var(--links-accent); color: #fff; }
+  .sel-games ::selection { background: var(--games-accent); color: #fff; }
+
+  /* ===== TOP NAV ===== */
+  .topbar {
+    height: 48px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    position: relative;
+  }
+  .topbar-logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .topbar-links { display: flex; gap: 1.5rem; }
+  .topbar-links a {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .topbar-links .nav-about:hover { color: var(--about-accent); }
+  .topbar-links .nav-projects:hover { color: var(--projects-accent); }
+  .topbar-links .nav-blog:hover { color: var(--blog-accent); }
+  .topbar-links .nav-games:hover { color: var(--games-accent); }
+  .topbar-links .nav-links:hover { color: var(--links-accent); }
+
+  /* ===== VIEW SYSTEM ===== */
+  .view { display: none; height: calc(100vh - 48px); }
+  .view.active { display: flex; }
+
+  /* ===== HUB VIEW ===== */
+  #hub {
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  /* Hub center */
+  .hub-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .hub-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem 3rem;
+    overflow-y: auto;
+  }
+
+  .hero-name { font-size: 3.2rem; font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+  .hero-sub { font-size: 1rem; color: var(--muted); max-width: 28rem; margin-bottom: 1.25rem; }
+  .hero-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .badge { font-size: 0.72rem; font-weight: 500; padding: 0.22rem 0.65rem; border-radius: 20px; }
+  .hero-btns { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+  .hero-btns a {
+    font-size: 0.82rem; font-weight: 500; padding: 0.5rem 1.2rem;
+    border-radius: 6px; text-decoration: none; transition: all 0.2s; cursor: pointer;
+  }
+  .btn-p { background: var(--hero-accent); color: #fff; }
+  .btn-p:hover { opacity: 0.85; }
+  .btn-s { border: 1px solid var(--border-hover); color: var(--text); }
+  .btn-s:hover { border-color: var(--hero-accent); color: var(--hero-accent); }
+  .easter-hint { font-size: 0.72rem; color: var(--light-muted); opacity: 0.35; margin-top: 1rem; cursor: default; transition: opacity 0.3s; }
+  .easter-hint:hover { opacity: 1; }
+
+  /* Bento grid */
+  .bento { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .bento-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem;
+    cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  }
+  .bento-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.04); transform: translateY(-1px); }
+  .bento-card h3 { font-size: 0.82rem; font-weight: 600; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.35rem; }
+  .bento-card p { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+  .bento-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .bento-card .tag-row { display: flex; gap: 0.3rem; margin-top: 0.35rem; flex-wrap: wrap; }
+  .mini-tag { font-size: 0.63rem; padding: 0.1rem 0.42rem; border-radius: 12px; font-weight: 500; }
+  .bento-full { grid-column: 1 / -1; }
+
+  .card-about:hover { border-color: rgba(8,145,178,0.3); }
+  .card-projects:hover { border-color: rgba(217,119,6,0.3); }
+  .card-blog:hover { border-color: rgba(124,58,237,0.3); }
+  .card-now:hover { border-color: rgba(5,150,105,0.3); }
+  .card-links:hover { border-color: rgba(225,29,72,0.3); }
+  .card-games:hover { border-color: rgba(234,88,12,0.3); }
+
+  /* Hub sidebar */
+  .hub-sidebar {
+    width: 255px; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 0.55rem;
+    padding: 0.85rem; overflow-y: auto; background: #fcfcfc;
+  }
+  .widget {
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem;
+    background: #fff; transition: border-color 0.2s;
+  }
+  .widget:hover { border-color: var(--border-hover); }
+  .widget-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem; }
+  .widget h4 { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.15rem; }
+  .widget p, .widget li { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+
+  .w-now .widget-label { color: var(--now-accent); }
+  .w-now:hover { border-color: rgba(5,150,105,0.2); }
+  .w-music .widget-label { color: var(--blog-accent); }
+  .w-music:hover { border-color: rgba(124,58,237,0.2); }
+  .music-bar { display: flex; align-items: flex-end; gap: 2px; height: 16px; margin-top: 0.3rem; }
+  .music-bar span { width: 3px; border-radius: 2px; background: var(--blog-accent); animation: bounce 0.8s ease-in-out infinite alternate; }
+  .music-bar span:nth-child(1) { height: 5px; animation-delay: 0s; }
+  .music-bar span:nth-child(2) { height: 11px; animation-delay: 0.15s; }
+  .music-bar span:nth-child(3) { height: 7px; animation-delay: 0.3s; }
+  .music-bar span:nth-child(4) { height: 14px; animation-delay: 0.1s; }
+  .music-bar span:nth-child(5) { height: 9px; animation-delay: 0.25s; }
+  @keyframes bounce { to { height: 3px; } }
+
+  .w-coffee .widget-label { color: var(--projects-accent); }
+  .w-coffee:hover { border-color: rgba(217,119,6,0.2); }
+  .coffee-cups { font-size: 0.9rem; letter-spacing: 2px; margin-top: 0.2rem; }
+
+  .w-lb .widget-label { color: var(--games-accent); }
+  .w-lb:hover { border-color: rgba(234,88,12,0.2); }
+  .lb-row { display: flex; justify-content: space-between; font-size: 0.7rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border); }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-score { font-weight: 600; color: var(--games-accent); }
+
+  .w-links .widget-label { color: var(--links-accent); }
+  .w-links:hover { border-color: rgba(225,29,72,0.2); }
+  .quick-links { display: flex; flex-direction: column; gap: 0.25rem; }
+  .quick-links a { font-size: 0.72rem; color: var(--muted); text-decoration: none; display: flex; justify-content: space-between; transition: color 0.2s; padding: 0.2rem 0; }
+  .quick-links a:hover { color: var(--links-accent); }
+
+  .w-eggs { border-style: dashed; background: repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(0,0,0,0.008) 8px,rgba(0,0,0,0.008) 16px); }
+  .w-eggs .widget-label { color: var(--light-muted); }
+  .egg-progress { display: flex; gap: 3px; margin-top: 0.3rem; }
+  .egg-found, .egg-hidden { width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; }
+  .egg-found { background: #fef3c7; }
+  .egg-hidden { background: #f3f4f6; color: #d1d5db; }
+
+  /* ===== WORLD BAR ===== */
+  .world-bar {
+    height: 110px; background: #fafafa; border-top: 1px solid var(--border);
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .ground { position: absolute; bottom: 0; left: 0; right: 0; height: 44px; background: #f0f7f0; border-top: 2px solid #d1e7d1; }
+  .road-main { position: absolute; left: 0; right: 0; bottom: 20px; height: 30px; background: #e5e7eb; border-top: 2px solid #d1d5db; z-index: 1; }
+  .road-main::after { content:''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: repeating-linear-gradient(90deg,#fff 0,#fff 14px,transparent 14px,transparent 28px); transform: translateY(-50%); }
+  .road-exit { position: absolute; width: 30px; bottom: 50px; height: 60px; background: #e5e7eb; border-radius: 5px 5px 0 0; z-index: 0; }
+  .road-exit::after { content:''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: repeating-linear-gradient(180deg,#fff 0,#fff 7px,transparent 7px,transparent 14px); transform: translateX(-50%); }
+  .exit-1 { left: 12%; } .exit-2 { left: 32%; } .exit-3 { left: 52%; } .exit-4 { left: 72%; }
+
+  .game-sign {
+    position: absolute; bottom: 82px; transform: translateX(-50%);
+    background: #fff; border: 1.5px solid; border-radius: 7px;
+    padding: 0.18rem 0.45rem; font-size: 0.58rem; font-family: var(--font-heading);
+    font-weight: 600; white-space: nowrap; z-index: 5;
+    display: flex; align-items: center; gap: 0.2rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .sign-1 { left: calc(12% + 15px); border-color: rgba(234,88,12,0.3); color: var(--games-accent); }
+  .sign-2 { left: calc(32% + 15px); border-color: rgba(124,58,237,0.3); color: var(--blog-accent); }
+  .sign-3 { left: calc(52% + 15px); border-color: rgba(5,150,105,0.3); color: var(--now-accent); }
+  .sign-4 { left: calc(72% + 15px); border-color: rgba(217,119,6,0.3); color: var(--projects-accent); }
+
+  .sign-pole { position: absolute; bottom: 50px; width: 2px; height: 32px; background: #d1d5db; z-index: 4; }
+  .pole-1 { left: calc(12% + 15px); } .pole-2 { left: calc(32% + 15px); } .pole-3 { left: calc(52% + 15px); } .pole-4 { left: calc(72% + 15px); }
+  .tree { position: absolute; bottom: 46px; z-index: 3; font-size: 1.2rem; }
+
+  #car { position: absolute; bottom: 26px; left: 50px; z-index: 10; font-size: 1.3rem; cursor: grab; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.12)); user-select: none; }
+  #car.flip { transform: scaleX(-1); }
+  .drive-hint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--light-muted); display: flex; align-items: center; gap: 0.35rem; z-index: 20; }
+  .key-hint { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1px solid var(--border-hover); border-radius: 3px; font-size: 0.5rem; background: #fff; }
+
+  /* ===== PAGE VIEWS (shared) ===== */
+  .page-view {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .page-header {
+    padding: 3rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-container { max-width: 52rem; margin: 0 auto; padding: 0 2rem; width: 100%; }
+  .page-body { padding: 2rem 0 4rem; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.82rem; color: var(--muted); text-decoration: none;
+    margin-bottom: 1.5rem; cursor: pointer; transition: color 0.2s;
+  }
+  .page-title { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.4rem; }
+  .page-subtitle { font-size: 1rem; color: var(--muted); max-width: 30rem; }
+  .section-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; vertical-align: middle; }
+
+  /* ===== ABOUT PAGE ===== */
+  .about-hero { display: flex; gap: 2.5rem; align-items: flex-start; margin-bottom: 2.5rem; }
+  .about-photo-lg {
+    width: 180px; height: 220px; border-radius: 14px; flex-shrink: 0;
+    background: var(--about-soft); display: flex; align-items: center; justify-content: center;
+    color: var(--about-accent); font-size: 0.85rem; font-weight: 500;
+  }
+  .about-bio p { margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.75; }
+  .about-bio a { color: var(--about-accent); text-decoration: none; }
+  .about-bio a:hover { text-decoration: underline; }
+  .about-badges-lg { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .about-badges-lg .badge { font-size: 0.78rem; padding: 0.25rem 0.7rem; }
+  .about-section { margin-top: 2.5rem; }
+  .about-section h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .timeline { border-left: 2px solid var(--about-soft); padding-left: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .timeline-item { position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -1.75rem; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--about-accent); }
+  .timeline-item h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+  .timeline-item .tl-date { font-size: 0.78rem; color: var(--about-accent); font-weight: 500; margin-bottom: 0.25rem; }
+  .timeline-item p { font-size: 0.88rem; color: var(--muted); }
+
+  .interactive-stub {
+    border: 1.5px dashed; border-radius: 12px; padding: 1.2rem;
+    display: flex; align-items: center; gap: 0.85rem; margin-top: 2rem;
+  }
+  .stub-icon { width: 40px; height: 40px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .stub-text h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.1rem; }
+  .stub-text p { font-size: 0.78rem; color: var(--muted); }
+  .stub-badge { font-size: 0.62rem; padding: 0.15rem 0.45rem; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-left: auto; flex-shrink: 0; align-self: flex-start; }
+
+  /* ===== PROJECTS PAGE ===== */
+  .projects-grid-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .project-card-lg {
+    border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s; cursor: pointer;
+  }
+  .project-card-lg:hover { border-color: rgba(217,119,6,0.25); box-shadow: 0 4px 16px rgba(217,119,6,0.06); transform: translateY(-2px); }
+  .project-card-lg .proj-preview {
+    width: 100%; height: 120px; background: var(--projects-soft); border-radius: 8px;
+    margin-bottom: 1rem; display: flex; align-items: center; justify-content: center;
+    color: var(--projects-accent); font-size: 0.8rem; font-weight: 500;
+  }
+  .project-card-lg h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .project-card-lg p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+  .proj-tags { display: flex; gap: 0.4rem; margin-top: 0.7rem; flex-wrap: wrap; }
+  .proj-tag { font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: 20px; background: var(--projects-soft); color: var(--projects-accent); font-weight: 500; }
+  .project-stub-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.25rem; }
+  .project-stub-card {
+    border: 1.5px dashed rgba(217,119,6,0.2); border-radius: 12px; padding: 1.5rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; min-height: 140px;
+  }
+  .project-stub-card h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 0.25rem; }
+  .project-stub-card p { font-size: 0.8rem; color: var(--light-muted); }
+
+  /* ===== BLOG PAGE ===== */
+  .blog-list-lg { display: flex; flex-direction: column; }
+  .blog-item-lg {
+    padding: 1.5rem 0; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .blog-item-lg:hover { opacity: 0.7; }
+  .blog-item-lg:last-child { border-bottom: none; }
+  .blog-meta { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.4rem; }
+  .blog-meta-date { font-size: 0.8rem; color: var(--muted); }
+  .blog-meta-cat { font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 20px; background: var(--blog-soft); color: var(--blog-accent); font-weight: 500; }
+  .blog-item-lg h3 { font-size: 1.2rem; margin-bottom: 0.3rem; }
+  .blog-item-lg p { font-size: 0.92rem; color: var(--muted); line-height: 1.65; }
+  .blog-read { font-size: 0.85rem; color: var(--blog-accent); font-weight: 500; margin-top: 0.5rem; display: inline-block; }
+
+  .blog-signup {
+    margin-top: 2.5rem; padding: 2rem; border: 1.5px dashed rgba(124,58,237,0.25);
+    border-radius: 14px; text-align: center;
+    background: linear-gradient(135deg, var(--blog-soft) 0%, #fff 100%);
+  }
+  .blog-signup h3 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+  .blog-signup p { font-size: 0.88rem; color: var(--muted); margin-bottom: 1rem; }
+  .signup-stub {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.5rem; background: var(--blog-accent); color: #fff;
+    border-radius: 8px; font-size: 0.88rem; font-weight: 500; cursor: pointer;
+  }
+
+  /* ===== NOW PAGE ===== */
+  .now-grid-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .now-card-lg {
+    padding: 1.5rem; background: #fafafa; border-radius: 12px;
+    border: 1px solid var(--border); transition: border-color 0.2s;
+  }
+  .now-card-lg:hover { border-color: rgba(5,150,105,0.2); }
+  .now-card-lg .now-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--now-accent); margin-bottom: 0.35rem; }
+  .now-card-lg h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .now-card-lg p { font-size: 0.88rem; color: var(--muted); line-height: 1.7; }
+  .now-card-lg ul { padding-left: 1.2rem; }
+  .now-card-lg li { font-size: 0.88rem; color: var(--muted); line-height: 1.7; }
+  .now-updated { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+  /* ===== LINKS PAGE ===== */
+  .links-grid-lg { display: flex; flex-direction: column; gap: 0.85rem; }
+  .link-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem; border: 1px solid var(--border);
+    border-radius: 12px; text-decoration: none; color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s; cursor: pointer;
+  }
+  .link-card:hover { border-color: rgba(225,29,72,0.2); box-shadow: 0 3px 14px rgba(225,29,72,0.06); transform: translateY(-1px); }
+  .link-card-icon { font-size: 1.4rem; margin-right: 1rem; }
+  .link-card-info { flex: 1; }
+  .link-card-info h3 { font-size: 1rem; margin-bottom: 0.1rem; }
+  .link-card-info p { font-size: 0.85rem; color: var(--muted); }
+  .link-card-arrow { color: #fda4af; font-size: 1.2rem; transition: color 0.2s; }
+  .link-card:hover .link-card-arrow { color: var(--links-accent); }
+
+  /* ===== GAMES PAGE ===== */
+  .games-intro { font-size: 1rem; color: var(--muted); margin-bottom: 2rem; max-width: 36rem; line-height: 1.7; }
+  .games-grid-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .game-card-lg {
+    border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem;
+    cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex; gap: 1.25rem; align-items: flex-start;
+  }
+  .game-card-lg:hover { border-color: rgba(234,88,12,0.3); box-shadow: 0 4px 16px rgba(234,88,12,0.06); transform: translateY(-2px); }
+  .game-icon-lg {
+    width: 56px; height: 56px; border-radius: 14px; background: var(--games-soft);
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+  }
+  .game-info h3 { font-size: 1.05rem; margin-bottom: 0.25rem; }
+  .game-info p { font-size: 0.85rem; color: var(--muted); line-height: 1.55; }
+  .game-info .game-tag { display: inline-block; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 20px; background: var(--games-soft); color: var(--games-accent); font-weight: 500; margin-top: 0.5rem; }
+
+  .leaderboard-full {
+    margin-top: 2.5rem; border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem;
+  }
+  .leaderboard-full h2 { font-size: 1.2rem; margin-bottom: 0.3rem; }
+  .leaderboard-full .lb-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 1.25rem; }
+  .lb-table { width: 100%; }
+  .lb-table-row { display: flex; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .lb-table-row:last-child { border-bottom: none; }
+  .lb-table-rank { width: 36px; font-weight: 700; color: var(--muted); }
+  .lb-table-name { flex: 1; font-weight: 500; }
+  .lb-table-game { flex: 0.7; color: var(--muted); font-size: 0.82rem; }
+  .lb-table-score { font-weight: 600; color: var(--games-accent); }
+
+  /* Portal overlay */
+  .portal {
+    position: fixed; inset: 0; background: #fff; z-index: 9999;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.75rem;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .portal.active { opacity: 1; pointer-events: all; }
+  .portal h2 { font-size: 1.8rem; font-weight: 800; }
+  .portal p { color: var(--muted); font-size: 0.95rem; }
+  .portal .back-btn { margin-top: 0.5rem; font-size: 0.82rem; padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid var(--border-hover); background: none; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; }
+  .portal .back-btn:hover { border-color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a class="topbar-logo" onclick="showView('hub')">kaden priebe</a>
+  <div class="topbar-links">
+    <a class="nav-about" onclick="showView('about')">who's this guy?</a>
+    <a class="nav-projects" onclick="showView('projects')">what i've built</a>
+    <a class="nav-games" onclick="showView('games')">play something</a>
+    <a class="nav-blog" onclick="showView('blog')">random thoughts</a>
+    <a class="nav-links" onclick="showView('links')">let's talk</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- HUB VIEW -->
+<!-- ============================================================ -->
+<div id="hub" class="view active sel-hero">
+  <div class="hub-center">
+    <div class="hub-main">
+      <div>
+        <h1 class="hero-name">hey, i'm kaden.</h1>
+        <p class="hero-sub">cornell student. researcher. builder of things. i like making stuff that's actually fun to use.</p>
+        <div class="hero-badges">
+          <span class="badge" style="background:var(--about-soft);color:var(--about-accent);">Cornell '28</span>
+          <span class="badge" style="background:var(--now-soft);color:var(--now-accent);">Researcher</span>
+          <span class="badge" style="background:var(--blog-soft);color:var(--blog-accent);">Creator</span>
+          <span class="badge" style="background:var(--projects-soft);color:var(--projects-accent);">Builder</span>
+        </div>
+        <div class="hero-btns">
+          <a class="btn-p" onclick="showView('projects')">see what i've built →</a>
+          <a class="btn-s" onclick="showView('about')">the backstory</a>
+        </div>
+        <div class="bento">
+          <div class="bento-card card-about" onclick="showView('about')">
+            <h3><span class="bento-dot" style="background:var(--about-accent);"></span> who's this guy?</h3>
+            <p>Bio, cancer research, Cornell life, and why I build things.</p>
+            <div class="tag-row"><span class="mini-tag" style="background:var(--about-soft);color:var(--about-accent);">Bio</span><span class="mini-tag" style="background:var(--about-soft);color:var(--about-accent);">Story</span></div>
+          </div>
+          <div class="bento-card card-projects" onclick="showView('projects')">
+            <h3><span class="bento-dot" style="background:var(--projects-accent);"></span> what i've built</h3>
+            <p>Course planner, neural decoding,  and more.</p>
+            <div class="tag-row"><span class="mini-tag" style="background:var(--projects-soft);color:var(--projects-accent);">4 projects</span></div>
+          </div>
+          <div class="bento-card card-blog" onclick="showView('blog')">
+            <h3><span class="bento-dot" style="background:var(--blog-accent);"></span> random thoughts</h3>
+            <p>Writing about building, learning, and life at Cornell.</p>
+            <div class="tag-row"><span class="mini-tag" style="background:var(--blog-soft);color:var(--blog-accent);">3 posts</span></div>
+          </div>
+          <div class="bento-card card-now" onclick="showView('now')">
+            <h3><span class="bento-dot" style="background:var(--now-accent);"></span> right now</h3>
+            <p>Lab research, ML coursework, side projects, and YouTube.</p>
+            <div class="tag-row"><span class="mini-tag" style="background:var(--now-soft);color:var(--now-accent);">Feb 2026</span></div>
+          </div>
+          <div class="bento-card card-games bento-full" onclick="showView('games')">
+            <h3><span class="bento-dot" style="background:var(--games-accent);"></span> play something</h3>
+            <p>Debug code, identify cells, race to type abstracts — or drive the car below into a road. 🚗</p>
+            <div class="tag-row"><span class="mini-tag" style="background:var(--games-soft);color:var(--games-accent);">4 games</span><span class="mini-tag" style="background:var(--games-soft);color:var(--games-accent);">Leaderboard</span></div>
+          </div>
+        </div>
+        <p class="easter-hint">psst... try the konami code ↑↑↓↓←→←→BA</p>
+      </div>
+    </div>
+
+    <!-- World bar -->
+    <div class="world-bar" id="world">
+      <div class="ground"></div>
+      <div class="road-main"></div>
+      <div class="road-exit exit-1"></div>
+      <div class="road-exit exit-2"></div>
+      <div class="road-exit exit-3"></div>
+      <div class="road-exit exit-4"></div>
+      <div class="sign-pole pole-1"></div><div class="sign-pole pole-2"></div><div class="sign-pole pole-3"></div><div class="sign-pole pole-4"></div>
+      <div class="game-sign sign-1">🧬 Cell ID</div>
+      <div class="game-sign sign-2">🐛 Debug</div>
+      <div class="game-sign sign-3">⌨️ Abstract Racer</div>
+      <div class="game-sign sign-4">🔬 Lab Rush</div>
+      <div class="tree" style="left:3%;">🌳</div><div class="tree" style="left:22%;">🌲</div><div class="tree" style="left:42%;">🌳</div><div class="tree" style="left:62%;">🌲</div><div class="tree" style="left:82%;">🌳</div><div class="tree" style="left:92%;">🌲</div>
+      <div id="car">🚗</div>
+      <div class="drive-hint"><span class="key-hint">←</span><span class="key-hint">→</span> drive <span class="key-hint">↑</span> enter road</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="hub-sidebar">
+    <div class="widget w-now">
+      <div class="widget-label"><span>🟢</span> Currently</div>
+      <h4>In the lab</h4>
+      <p>Gene expression analysis on MCF7 tumor samples</p>
+    </div>
+    <div class="widget w-music">
+      <div class="widget-label"><span>🎵</span> Listening to</div>
+      <h4>Redbone</h4>
+      <p>Childish Gambino</p>
+      <div class="music-bar"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="widget w-coffee">
+      <div class="widget-label"><span>☕</span> Coffee today</div>
+      <div class="coffee-cups">☕☕☕<span style="opacity:0.2;">☕☕</span></div>
+      <p style="margin-top:0.2rem;">3 of 5 (it's only 2pm)</p>
+    </div>
+    <div class="widget w-lb">
+      <div class="widget-label"><span>🏆</span> Top Scores</div>
+      <div class="lb-row"><span>1. speedster42</span><span class="lb-score">12,450</span></div>
+      <div class="lb-row"><span>2. cornell_gamer</span><span class="lb-score">11,200</span></div>
+      <div class="lb-row"><span>3. big_red_fan</span><span class="lb-score">8,340</span></div>
+      <div class="lb-row"><span style="color:var(--light-muted);">4. you?</span><span class="lb-score" style="color:var(--light-muted);">—</span></div>
+    </div>
+    <div class="widget w-links">
+      <div class="widget-label"><span>🔗</span> Connect</div>
+      <div class="quick-links">
+        <a href="#">YouTube <span>→</span></a>
+        <a href="#">GitHub <span>→</span></a>
+        <a href="#">LinkedIn <span>→</span></a>
+        <a href="#">Email <span>→</span></a>
+      </div>
+    </div>
+    <div class="widget w-eggs">
+      <div class="widget-label"><span>🥚</span> Secrets found</div>
+      <div class="egg-progress">
+        <span class="egg-found">🥚</span><span class="egg-found">🥚</span>
+        <span class="egg-hidden">?</span><span class="egg-hidden">?</span><span class="egg-hidden">?</span><span class="egg-hidden">?</span><span class="egg-hidden">?</span>
+      </div>
+      <p style="margin-top:0.3rem;">2 of 7 — keep exploring</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ABOUT PAGE -->
+<!-- ============================================================ -->
+<div id="about" class="view page-view sel-about">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--about-accent);"></span>who's this guy?</h1>
+      <p class="page-subtitle">The short version: curious about everything, building to learn.</p>
+    </div>
+    <div class="page-body">
+      <div class="about-hero">
+        <div class="about-photo-lg">photo</div>
+        <div class="about-bio">
+          <p>I'm <strong>Kaden Priebe</strong>, a student at Cornell studying at the intersection of biology and computation. By day I'm in the lab working on cancer research — by night I'm building side projects, making <a href="#">YouTube videos</a>, and probably debugging something that should've worked the first time.</p>
+          <p>I got into research through a genuine curiosity about how cells make decisions — how a tumor cell "decides" to metastasize, how gene regulatory networks coordinate. That same curiosity drives everything else I do: building tools, writing code, making videos about what I'm learning.</p>
+          <p>I believe the best way to learn something is to build something with it. This site is proof of that philosophy (and also my excuse to procrastinate on problem sets).</p>
+          <div class="about-badges-lg">
+            <span class="badge" style="background:var(--about-soft);color:var(--about-accent);">Cornell '28</span>
+            <span class="badge" style="background:var(--about-soft);color:var(--about-accent);">Researcher</span>
+            <span class="badge" style="background:var(--about-soft);color:var(--about-accent);">Creator</span>
+            <span class="badge" style="background:var(--about-soft);color:var(--about-accent);">Builder</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-section">
+        <h2><span class="section-dot" style="background:var(--about-accent);"></span>the story so far</h2>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="tl-date">2024 — Present</div>
+            <h3>Cornell University</h3>
+            <p>Studying biology with a computational focus. Working in a cancer biology lab on tumor microenvironments and gene expression patterns.</p>
+          </div>
+          <div class="timeline-item">
+            <div class="tl-date">2023</div>
+            <h3>Started Building</h3>
+            <p>First side projects, first YouTube videos, first time realizing that building things is the best way to learn.</p>
+          </div>
+          <div class="timeline-item">
+            <div class="tl-date">2022</div>
+            <h3>Research Spark</h3>
+            <p>Summer research program that changed everything — discovered the intersection of biology and computation.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="interactive-stub" style="border-color:rgba(8,145,178,0.25);">
+        <div class="stub-icon" style="background:var(--about-soft);color:var(--about-accent);">✨</div>
+        <div class="stub-text">
+          <h4>Scroll-triggered animations</h4>
+          <p>Photo slides in, text fades up, timeline items stagger on scroll. Badges pop in one by one.</p>
+        </div>
+        <span class="stub-badge" style="background:var(--about-soft);color:var(--about-accent);">Phase 3</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROJECTS PAGE -->
+<!-- ============================================================ -->
+<div id="projects" class="view page-view sel-projects">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--projects-accent);"></span>what i've built</h1>
+      <p class="page-subtitle">Real projects, stubbed ambitions, and everything in between.</p>
+    </div>
+    <div class="page-body">
+      <div class="projects-grid-lg">
+        <div class="project-card-lg">
+          <div class="proj-preview">screenshot</div>
+          <h3>Cornell Course Planner</h3>
+          <p>Smart schedule builder for Cornell students with AI-powered recommendations and requirement tracking.</p>
+          <div class="proj-tags"><span class="proj-tag">Next.js</span><span class="proj-tag">TypeScript</span><span class="proj-tag">AI</span></div>
+        </div>
+        <div class="project-card-lg">
+          <div class="proj-preview">visualization</div>
+          <h3>Neural Decoding Pipeline</h3>
+          <p>Deep learning models for decoding neural activity patterns from calcium imaging data.</p>
+          <div class="proj-tags"><span class="proj-tag">Python</span><span class="proj-tag">PyTorch</span><span class="proj-tag">Neuroscience</span></div>
+        </div>
+        <div class="project-card-lg">
+          <div class="proj-preview">meta</div>
+          <h3>This Website</h3>
+          <p>The site you're on. Personality-first personal site with Easter eggs, minigames, and a real leaderboard.</p>
+          <div class="proj-tags"><span class="proj-tag">Next.js</span><span class="proj-tag">MDX</span><span class="proj-tag">Supabase</span></div>
+        </div>
+      </div>
+
+      <!-- Stubs for future projects -->
+      <div class="project-stub-row">
+        <div class="project-stub-card">
+          <h3>🧪 Next research project</h3>
+          <p>Coming soon — check back</p>
+        </div>
+        <div class="project-stub-card">
+          <h3>💡 Next side project</h3>
+          <p>Ideas are brewing</p>
+        </div>
+      </div>
+
+      <div class="interactive-stub" style="border-color:rgba(217,119,6,0.25);">
+        <div class="stub-icon" style="background:var(--projects-soft);color:var(--projects-accent);">🖼</div>
+        <div class="stub-text">
+          <h4>Hover preview + cursor-follow screenshots</h4>
+          <p>Hovering a project card shows a live screenshot preview that follows the mouse. Click expands to full detail page with README, links, and demo.</p>
+        </div>
+        <span class="stub-badge" style="background:var(--projects-soft);color:var(--projects-accent);">Phase 3</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BLOG PAGE -->
+<!-- ============================================================ -->
+<div id="blog" class="view page-view sel-blog">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--blog-accent);"></span>random thoughts</h1>
+      <p class="page-subtitle">Writing about building, learning, and whatever's on my mind.</p>
+    </div>
+    <div class="page-body">
+      <div class="blog-list-lg">
+        <div class="blog-item-lg">
+          <div class="blog-meta">
+            <span class="blog-meta-date">Feb 20, 2026</span>
+            <span class="blog-meta-cat">building</span>
+            <span style="font-size:0.78rem;color:var(--muted);">· 5 min read</span>
+          </div>
+          <h3>Why I Started Building Instead of Just Learning</h3>
+          <p>The gap between tutorials and real projects is where all the interesting stuff happens. Tutorials give you the syntax — projects give you the judgment. Here's what I mean.</p>
+          <span class="blog-read">Read post →</span>
+        </div>
+        <div class="blog-item-lg">
+          <div class="blog-meta">
+            <span class="blog-meta-date">Feb 12, 2026</span>
+            <span class="blog-meta-cat">life</span>
+            <span style="font-size:0.78rem;color:var(--muted);">· 8 min read</span>
+          </div>
+          <h3>My First Semester at Cornell, Unfiltered</h3>
+          <p>What they don't tell you in the acceptance letter — the good, the hard, and the surprisingly fun parts. Gorges, late nights, and the realization that everyone's figuring it out.</p>
+          <span class="blog-read">Read post →</span>
+        </div>
+        <div class="blog-item-lg">
+          <div class="blog-meta">
+            <span class="blog-meta-date">Jan 28, 2026</span>
+            <span class="blog-meta-cat">deep learning</span>
+            <span style="font-size:0.78rem;color:var(--muted);">· 6 min read</span>
+          </div>
+          <h3>Deep Learning on a Budget: What Actually Works</h3>
+          <p>You don't need an A100 to get started. Here's what I've learned training models on consumer hardware and free cloud tiers.</p>
+          <span class="blog-read">Read post →</span>
+        </div>
+      </div>
+
+      <!-- Fun email signup stub -->
+      <div class="blog-signup">
+        <h3>🎰 Spin to subscribe</h3>
+        <p>No boring email input here. Pull the lever to reveal a surprise — and maybe subscribe while you're at it.</p>
+        <div class="signup-stub">🎰 Pull the lever</div>
+        <p style="font-size:0.72rem;color:var(--light-muted);margin-top:0.75rem;">Interactive signup — Phase 4 stub</p>
+      </div>
+
+      <div class="interactive-stub" style="border-color:rgba(124,58,237,0.25);margin-top:2rem;">
+        <div class="stub-icon" style="background:var(--blog-soft);color:var(--blog-accent);">📖</div>
+        <div class="stub-text">
+          <h4>Reading progress bar + emoji reactions</h4>
+          <p>Progress bar tracks how far you've read. React to posts with emoji (no login). Estimated read time on each card.</p>
+        </div>
+        <span class="stub-badge" style="background:var(--blog-soft);color:var(--blog-accent);">Phase 4</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- NOW PAGE -->
+<!-- ============================================================ -->
+<div id="now" class="view page-view sel-now">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--now-accent);"></span>what i'm up to right now</h1>
+      <p class="page-subtitle">A snapshot of my life, updated whenever things change.</p>
+    </div>
+    <div class="page-body">
+      <p class="now-updated">Last updated: February 2026</p>
+      <div class="now-grid-lg">
+        <div class="now-card-lg">
+          <div class="now-label">Research</div>
+          <h3>Cancer Biology Lab</h3>
+          <p>Working on tumor microenvironments — specifically gene expression patterns in MCF7 cell lines. Running assays, analyzing data, and learning how cells make decisions under stress.</p>
+        </div>
+        <div class="now-card-lg">
+          <div class="now-label">Coursework</div>
+          <h3>Spring 2026 Semester</h3>
+          <ul>
+            <li>CS 3780 — Intro to Machine Learning</li>
+            <li>Deep learning independent study</li>
+            <li>Genetics & molecular biology</li>
+          </ul>
+        </div>
+        <div class="now-card-lg">
+          <div class="now-label">Building</div>
+          <h3>Side Projects</h3>
+          <p>This personal website (you're looking at it), a Cornell course planner with AI recommendations, and experimenting with neural decoding from calcium imaging data.</p>
+        </div>
+        <div class="now-card-lg">
+          <div class="now-label">Creating</div>
+          <h3>YouTube & Content</h3>
+          <p>Making videos about college life at Cornell, coding projects, and the intersection of biology and technology. Growing slowly but genuinely.</p>
+        </div>
+        <div class="now-card-lg">
+          <div class="now-label">Reading</div>
+          <h3>Books & Papers</h3>
+          <p>Currently reading about attention mechanisms in transformers and catching up on cancer biology review papers for my lab work.</p>
+        </div>
+        <div class="now-card-lg">
+          <div class="now-label">Life</div>
+          <h3>Day to Day</h3>
+          <p>Too much coffee, not enough sleep, lots of time in the library and the lab. Trying to balance building, studying, and actually enjoying college.</p>
+        </div>
+      </div>
+
+      <div class="interactive-stub" style="border-color:rgba(5,150,105,0.25);margin-top:2rem;">
+        <div class="stub-icon" style="background:var(--now-soft);color:var(--now-accent);">📡</div>
+        <div class="stub-text">
+          <h4>Live status widget + auto-updating content</h4>
+          <p>Real-time "currently" indicator synced from the sidebar. Spotify now-playing integration (v2). Cards animate on entry.</p>
+        </div>
+        <span class="stub-badge" style="background:var(--now-soft);color:var(--now-accent);">Phase 3–4</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LINKS PAGE -->
+<!-- ============================================================ -->
+<div id="links" class="view page-view sel-links">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--links-accent);"></span>let's talk</h1>
+      <p class="page-subtitle">I'm online in all the usual places. I actually reply to emails.</p>
+    </div>
+    <div class="page-body">
+      <div class="links-grid-lg">
+        <a href="#" class="link-card">
+          <span class="link-card-icon">📺</span>
+          <div class="link-card-info">
+            <h3>YouTube</h3>
+            <p>Videos about college, coding, science, and whatever I'm learning. New uploads... eventually.</p>
+          </div>
+          <span class="link-card-arrow">→</span>
+        </a>
+        <a href="#" class="link-card">
+          <span class="link-card-icon">💻</span>
+          <div class="link-card-info">
+            <h3>GitHub</h3>
+            <p>Open source projects, experiments, and things I'm building in public.</p>
+          </div>
+          <span class="link-card-arrow">→</span>
+        </a>
+        <a href="#" class="link-card">
+          <span class="link-card-icon">💼</span>
+          <div class="link-card-info">
+            <h3>LinkedIn</h3>
+            <p>The professional version of me. Slightly more formal, same person.</p>
+          </div>
+          <span class="link-card-arrow">→</span>
+        </a>
+        <a href="#" class="link-card">
+          <span class="link-card-icon">✉️</span>
+          <div class="link-card-info">
+            <h3>Email</h3>
+            <p>kaden@cornell.edu — reach out about anything. Seriously, I read them all.</p>
+          </div>
+          <span class="link-card-arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- GAMES PAGE -->
+<!-- ============================================================ -->
+<div id="games" class="view page-view sel-games">
+  <div class="page-container">
+    <div class="page-header">
+      <a class="back-link" onclick="showView('hub')">← back home</a>
+      <h1 class="page-title"><span class="section-dot" style="background:var(--games-accent);"></span>play something</h1>
+      <p class="page-subtitle">Games that actually relate to my life. Compete for the leaderboard.</p>
+    </div>
+    <div class="page-body">
+      <p class="games-intro">Every game here connects to something I actually do — whether it's debugging code at 2am, identifying cells in the lab, speed-reading papers, or pipetting under pressure. No random snake games. These are <em>my</em> games.</p>
+
+      <div class="games-grid-lg">
+        <div class="game-card-lg">
+          <div class="game-icon-lg">🐛</div>
+          <div class="game-info">
+            <h3>Bug Hunter</h3>
+            <p>Real code snippets with real bugs. Find the bug before time runs out. Difficulty scales — from off-by-one errors to async race conditions.</p>
+            <span class="game-tag">Debugging · 30 sec rounds</span>
+          </div>
+        </div>
+        <div class="game-card-lg">
+          <div class="game-icon-lg">🧬</div>
+          <div class="game-info">
+            <h3>Cell or Not</h3>
+            <p>Microscopy image flash cards. Is it a cancer cell or normal tissue? Trained my eye in the lab — now train yours. Real imaging data.</p>
+            <span class="game-tag">Biology · Pattern recognition</span>
+          </div>
+        </div>
+        <div class="game-card-lg">
+          <div class="game-icon-lg">⌨️</div>
+          <div class="game-info">
+            <h3>Abstract Racer</h3>
+            <p>Speed-type real sentences from published research papers. Bonus points for abstracts from my own lab's publications.</p>
+            <span class="game-tag">Typing · Academic speedrun</span>
+          </div>
+        </div>
+        <div class="game-card-lg">
+          <div class="game-icon-lg">🔬</div>
+          <div class="game-info">
+            <h3>Lab Rush</h3>
+            <p>Pipette the right volumes, in the right order, before the timer runs out. Miss a step and the experiment fails. Just like real lab work (minus the anxiety).</p>
+            <span class="game-tag">Precision · Lab simulation</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full leaderboard -->
+      <div class="leaderboard-full">
+        <h2>🏆 Leaderboard</h2>
+        <p class="lb-sub">All games · All time · Top 6</p>
+        <div class="lb-table">
+          <div class="lb-table-row"><span class="lb-table-rank">1.</span><span class="lb-table-name">speedster42</span><span class="lb-table-game">Abstract Racer</span><span class="lb-table-score">12,450</span></div>
+          <div class="lb-table-row"><span class="lb-table-rank">2.</span><span class="lb-table-name">cornell_gamer</span><span class="lb-table-game">Bug Hunter</span><span class="lb-table-score">11,200</span></div>
+          <div class="lb-table-row"><span class="lb-table-rank">3.</span><span class="lb-table-name">big_red_fan</span><span class="lb-table-game">Lab Rush</span><span class="lb-table-score">8,340</span></div>
+          <div class="lb-table-row"><span class="lb-table-rank">4.</span><span class="lb-table-name">bio_nerd_22</span><span class="lb-table-game">Cell or Not</span><span class="lb-table-score">7,890</span></div>
+          <div class="lb-table-row"><span class="lb-table-rank">5.</span><span class="lb-table-name">debug_queen</span><span class="lb-table-game">Bug Hunter</span><span class="lb-table-score">6,720</span></div>
+          <div class="lb-table-row"><span class="lb-table-rank">6.</span><span class="lb-table-name" style="color:var(--light-muted);">you?</span><span class="lb-table-game"></span><span class="lb-table-score" style="color:var(--light-muted);">play to rank</span></div>
+        </div>
+      </div>
+
+      <div class="interactive-stub" style="border-color:rgba(234,88,12,0.25);margin-top:2rem;">
+        <div class="stub-icon" style="background:var(--games-soft);color:var(--games-accent);">🏗</div>
+        <div class="stub-text">
+          <h4>Playable inline games + Supabase leaderboard</h4>
+          <p>Games run in-page (no navigation). Scores submit to a real backend with anti-cheat validation. Name persists via cookie. Also reachable by driving the car into a road exit from the hub.</p>
+        </div>
+        <span class="stub-badge" style="background:var(--games-soft);color:var(--games-accent);">Phase 5</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Game portal overlay (from car) -->
+<div class="portal" id="portal">
+  <h2 id="portal-title">🐛 Bug Hunter</h2>
+  <p id="portal-desc">Loading game...</p>
+  <button class="back-btn" onclick="closePortal()">← back to site</button>
+</div>
+
+<script>
+  // === View switching ===
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const view = document.getElementById(id);
+    if (view) {
+      view.classList.add('active');
+      if (view.classList.contains('page-view')) view.scrollTop = 0;
+    }
+  }
+
+  // === Car driving ===
+  const car = document.getElementById('car');
+  const world = document.getElementById('world');
+  const portal = document.getElementById('portal');
+  const portalTitle = document.getElementById('portal-title');
+  const portalDesc = document.getElementById('portal-desc');
+
+  let carX = 50, carSpeed = 0, keys = {}, carDir = 1;
+
+  const exits = [
+    { center: 12, label: '🧬 Cell or Not', desc: 'Microscopy flash cards — cancer cell or normal tissue?' },
+    { center: 32, label: '🐛 Bug Hunter', desc: 'Find the bug in real code before time runs out.' },
+    { center: 52, label: '⌨️ Abstract Racer', desc: 'Speed-type sentences from real research papers.' },
+    { center: 72, label: '🔬 Lab Rush', desc: 'Pipette the right volumes in the right order.' },
+  ];
+
+  document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
+  });
+  document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  function gameLoop() {
+    if (!world || !world.offsetWidth) { requestAnimationFrame(gameLoop); return; }
+    const ww = world.offsetWidth;
+    if (keys['ArrowRight']) { carSpeed = Math.min(carSpeed + 0.5, 6); carDir = 1; }
+    else if (keys['ArrowLeft']) { carSpeed = Math.max(carSpeed - 0.5, -6); carDir = -1; }
+    else { carSpeed *= 0.92; if (Math.abs(carSpeed) < 0.1) carSpeed = 0; }
+    carX += carSpeed;
+    if (carX < 10) { carX = 10; carSpeed = 0; }
+    if (carX > ww - 30) { carX = ww - 30; carSpeed = 0; }
+    car.style.left = carX + 'px';
+    car.classList.toggle('flip', carDir === -1);
+
+    if (keys['ArrowUp']) {
+      const pct = (carX / ww) * 100;
+      for (const exit of exits) {
+        if (Math.abs(pct - exit.center) < 5) {
+          openPortal(exit.label, exit.desc);
+          keys['ArrowUp'] = false;
+          break;
+        }
+      }
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  function openPortal(t, d) { portalTitle.textContent = t; portalDesc.textContent = d; portal.classList.add('active'); }
+  function closePortal() { portal.classList.remove('active'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePortal(); });
+
+  gameLoop();
+</script>
+
+</body>
+</html>

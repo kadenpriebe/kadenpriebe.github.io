@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaden Priebe — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #666666;
+    --border: rgba(0,0,0,0.05);
+    --border-hover: rgba(0,0,0,0.1);
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::selection { background: var(--text); color: var(--bg); }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+  .nav-inner {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* SECTIONS */
+  .container { max-width: 56rem; margin: 0 auto; padding: 0 1.5rem; }
+  section { padding: 3rem 0; }
+  section + section { padding-top: 0; }
+
+  h1, h2, h3, h4 { font-family: var(--font-heading); letter-spacing: -0.02em; }
+  h1 { font-size: 2.8rem; font-weight: 800; line-height: 1.1; margin-bottom: 1rem; }
+  h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 1.5rem; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85rem; }
+
+  /* HERO */
+  .hero { padding: 5rem 0 3rem; }
+  .hero p { font-size: 1.15rem; color: var(--muted); max-width: 32rem; line-height: 1.8; }
+  .hero-tagline { margin-top: 1.5rem; }
+  .hero-links { margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+  .hero-links a {
+    display: inline-block;
+    padding: 0.6rem 1.4rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--text); color: var(--bg); }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { border: 1px solid var(--border-hover); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--text); }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  /* ABOUT PREVIEW */
+  .about-preview { display: flex; gap: 2.5rem; align-items: flex-start; }
+  .about-photo {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    background: #f0f0f0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .about-text p { margin-bottom: 0.75rem; }
+
+  /* PROJECT CARDS */
+  .projects-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .project-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .project-card:hover { border-color: var(--border-hover); }
+  .project-card h3 { margin-bottom: 0.4rem; }
+  .project-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+  .project-tags { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .tag {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    background: #f5f5f5;
+    color: var(--muted);
+  }
+
+  /* BLOG POSTS */
+  .blog-list { display: flex; flex-direction: column; gap: 1.5rem; }
+  .blog-item {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .blog-item:hover { opacity: 0.75; }
+  .blog-item:last-child { border-bottom: none; }
+  .blog-date {
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+  .blog-date::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .blog-item h3 { font-size: 1.15rem; margin-bottom: 0.3rem; }
+  .blog-item p { font-size: 0.9rem; color: var(--muted); }
+  .read-more {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* NOW PAGE PREVIEW */
+  .now-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .now-card {
+    padding: 1.25rem;
+    background: #fafafa;
+    border-radius: 10px;
+  }
+  .now-card h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .now-card p, .now-card li { font-size: 0.88rem; color: var(--muted); line-height: 1.7; }
+  .now-card ul { padding-left: 1.2rem; }
+
+  /* LINKS/CONTACT */
+  .links-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+  .link-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  .link-item:hover { border-color: var(--border-hover); }
+  .link-label { font-weight: 500; font-size: 0.95rem; }
+  .link-desc { font-size: 0.85rem; color: var(--muted); }
+  .link-arrow { color: var(--muted); font-size: 1.1rem; }
+
+  /* FOOTER */
+  footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+  }
+  .footer-inner {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .footer-links { display: flex; gap: 1.5rem; }
+  .footer-links a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--text); }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    h1 { font-size: 2rem; }
+    .about-preview { flex-direction: column; }
+    .projects-grid, .now-grid { grid-template-columns: 1fr; }
+    .nav-links { gap: 1.25rem; }
+    .nav-links a { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">kaden priebe</a>
+    <div class="nav-links">
+      <a href="#about">who's this guy?</a>
+      <a href="#projects">what i've built</a>
+      <a href="#blog">random thoughts</a>
+      <a href="#links">let's talk</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="container">
+  <section class="hero">
+    <h1>hey, i'm kaden.</h1>
+    <p class="hero-tagline">
+      cornell student. researcher. builder of things.
+      i like making stuff that's actually fun to use —
+      and occasionally writing about it.
+    </p>
+    <div class="hero-links">
+      <a href="#projects" class="btn-primary">see what i've built →</a>
+      <a href="#about" class="btn-secondary">the backstory</a>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ABOUT -->
+  <section id="about">
+    <h2>who's this guy?</h2>
+    <div class="about-preview">
+      <div class="about-photo">photo</div>
+      <div class="about-text">
+        <p>
+          I'm a student at Cornell studying at the intersection of biology and computation.
+          By day I'm in the lab working on cancer research — by night I'm building
+          side projects, making YouTube videos, and probably debugging something that
+          should've worked the first time.
+        </p>
+        <p>
+          I believe the best way to learn something is to build something with it.
+          This site is proof of that philosophy (and also my excuse to procrastinate
+          on problem sets).
+        </p>
+        <p class="muted small">Cornell '28 · Researcher · Creator · Builder</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- NOW -->
+  <section>
+    <h2>what i'm up to right now</h2>
+    <p class="muted" style="margin-bottom: 1.25rem; font-size: 0.9rem;">Updated February 2026</p>
+    <div class="now-grid">
+      <div class="now-card">
+        <h3>🔬 Research</h3>
+        <p>Working in a cancer biology lab studying tumor microenvironments and gene expression patterns.</p>
+      </div>
+      <div class="now-card">
+        <h3>📚 Learning</h3>
+        <ul>
+          <li>Machine learning & deep learning</li>
+          <li>CS 3780 — Intro to ML</li>
+          <li>Full-stack web development</li>
+        </ul>
+      </div>
+      <div class="now-card">
+        <h3>🛠 Building</h3>
+        <p>This website, a Cornell course planner, and experimenting with neural decoding models.</p>
+      </div>
+      <div class="now-card">
+        <h3>🎥 Creating</h3>
+        <p>YouTube videos about college, coding, and the intersection of science & tech.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- PROJECTS -->
+  <section id="projects">
+    <h2>what i've built</h2>
+    <div class="projects-grid">
+      <div class="project-card">
+        <h3>Cornell Course Planner</h3>
+        <p>Smart schedule builder for Cornell students with AI-powered recommendations and requirement tracking.</p>
+        <div class="project-tags">
+          <span class="tag">Next.js</span>
+          <span class="tag">TypeScript</span>
+          <span class="tag">AI</span>
+        </div>
+      </div>
+      <div class="project-card">
+        <h3>Neural Decoding Pipeline</h3>
+        <p>Deep learning models for decoding neural activity patterns from calcium imaging data.</p>
+        <div class="project-tags">
+          <span class="tag">Python</span>
+          <span class="tag">PyTorch</span>
+          <span class="tag">Neuroscience</span>
+        </div>
+      </div>
+      <div class="project-card">
+        <h3>This Website</h3>
+        <p>Personality-first personal site with Easter eggs, minigames, and a real leaderboard. You're looking at it.</p>
+        <div class="project-tags">
+          <span class="tag">Next.js</span>
+          <span class="tag">MDX</span>
+          <span class="tag">Tailwind</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- BLOG -->
+  <section id="blog">
+    <h2>random thoughts</h2>
+    <div class="blog-list">
+      <div class="blog-item">
+        <div class="blog-date">Feb 20, 2026</div>
+        <h3>Why I Started Building Instead of Just Learning</h3>
+        <p>The gap between tutorials and real projects is where all the interesting stuff happens.</p>
+        <span class="read-more">Read post →</span>
+      </div>
+      <div class="blog-item">
+        <div class="blog-date">Feb 12, 2026</div>
+        <h3>My First Semester at Cornell, Unfiltered</h3>
+        <p>What they don't tell you in the acceptance letter — the good, the hard, and the surprisingly fun parts.</p>
+        <span class="read-more">Read post →</span>
+      </div>
+      <div class="blog-item">
+        <div class="blog-date">Jan 28, 2026</div>
+        <h3>Deep Learning on a Budget: What Actually Works</h3>
+        <p>You don't need an A100 to get started. Here's what I've learned training models on consumer hardware.</p>
+        <span class="read-more">Read post →</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- LINKS -->
+  <section id="links">
+    <h2>let's talk</h2>
+    <div class="links-grid">
+      <a href="#" class="link-item">
+        <div>
+          <div class="link-label">YouTube</div>
+          <div class="link-desc">Videos about college, coding, and science</div>
+        </div>
+        <span class="link-arrow">→</span>
+      </a>
+      <a href="#" class="link-item">
+        <div>
+          <div class="link-label">GitHub</div>
+          <div class="link-desc">Open source projects and experiments</div>
+        </div>
+        <span class="link-arrow">→</span>
+      </a>
+      <a href="#" class="link-item">
+        <div>
+          <div class="link-label">LinkedIn</div>
+          <div class="link-desc">Professional stuff, if you're into that</div>
+        </div>
+        <span class="link-arrow">→</span>
+      </a>
+      <a href="#" class="link-item">
+        <div>
+          <div class="link-label">Email</div>
+          <div class="link-desc">kaden@cornell.edu — I actually reply</div>
+        </div>
+        <span class="link-arrow">→</span>
+      </a>
+    </div>
+  </section>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <span>© 2026 kaden priebe · built with caffeine and curiosity</span>
+    <div class="footer-links">
+      <a href="#">GitHub</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">YouTube</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

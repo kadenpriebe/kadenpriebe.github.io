@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaden Priebe — The Void (v8)</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #666666;
+    --hero-accent: #4f46e5;
+    --bio-accent: #0891b2;
+    --ml-accent: #7c3aed;
+    --phil-accent: #e11d48;
+    --build-accent: #d97706;
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-heading);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    cursor: none; /* Hide default cursor to use custom morphing one */
+  }
+
+  /* ===== CUSTOM CURSOR ===== */
+  #cursor {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    background: var(--text);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10000;
+    transition: width 0.3s, height 0.3s, border-radius 0.3s, background 0.3s, transform 0.1s;
+    mix-blend-mode: difference;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #cursor.bio { width: 30px; height: 30px; background: rgba(8, 145, 178, 0.4); border: 2px solid var(--bio-accent); }
+  #cursor.ml { width: 20px; height: 20px; background: var(--ml-accent); border-radius: 2px; }
+  #cursor.phil { width: 15px; height: 25px; border-radius: 40% 40% 10% 10%; background: var(--phil-accent); }
+  #cursor.build { width: 24px; height: 24px; border-radius: 4px; background: var(--build-accent); }
+
+  /* ===== LAYOUT ===== */
+  .playground {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .center-anchor {
+    text-align: center;
+    z-index: 100;
+  }
+  .center-anchor h1 { font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; }
+  .center-anchor p { font-size: 1rem; color: var(--muted); margin-top: 0.5rem; }
+
+  .quadrant {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+
+  /* ===== BIO (Top Left) ===== */
+  .top-left { top: 50px; left: 50px; }
+  .cell-toy {
+    width: 180px;
+    height: 180px;
+    background: rgba(8, 145, 178, 0.05);
+    border: 3px solid var(--bio-accent);
+    border-radius: 48% 52% 55% 45% / 45% 48% 52% 55%;
+    position: relative;
+    animation: morph 8s infinite ease-in-out;
+    cursor: pointer;
+  }
+  .organelle {
+    position: absolute;
+    background: var(--bio-accent);
+    border-radius: 50%;
+    opacity: 0.6;
+    transition: transform 0.5s ease;
+  }
+  .cell-toy:hover .organelle { transform: translate(10px, -10px) scale(1.2); }
+  @keyframes morph {
+    0%, 100% { border-radius: 48% 52% 55% 45% / 45% 48% 52% 55%; }
+    50% { border-radius: 55% 45% 48% 52% / 52% 55% 45% 48%; }
+  }
+
+  /* ===== ML (Top Right) ===== */
+  .top-right { top: 50px; right: 50px; }
+  #ml-canvas { width: 250px; height: 250px; cursor: pointer; }
+
+  /* ===== PHILOSOPHY (Bottom Left) ===== */
+  .bottom-left { bottom: 50px; left: 50px; }
+  .bust-toy {
+    width: 120px;
+    height: 180px;
+    background: #eee;
+    border-radius: 50% 50% 20% 20%;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .bust-toy:hover { transform: scale(1.05); }
+  .bust-crack {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent 45%, #fff 48%, #fff 52%, transparent 55%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .bust-glow {
+    position: absolute;
+    top: 30%; left: 50%;
+    width: 0px; height: 0px;
+    background: radial-gradient(circle, #fff 0%, var(--phil-accent) 70%, transparent 100%);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    filter: blur(20px);
+    transition: width 0.5s, height 0.5s;
+    z-index: 10;
+  }
+  .bust-toy:hover .bust-crack { opacity: 0.4; }
+  .bust-toy:hover .bust-glow { width: 100px; height: 100px; }
+
+  /* ===== BUILDING (Bottom Right) ===== */
+  .bottom-right { bottom: 50px; right: 50px; }
+  .lego-toy {
+    width: 100px;
+    height: 60px;
+    background: var(--build-accent);
+    position: relative;
+    border-radius: 4px;
+    box-shadow: 10px 10px 0 #b45309;
+    transform: rotateX(45deg) rotateZ(-45deg);
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .lego-stud {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: var(--build-accent);
+    border-radius: 50%;
+    top: -10px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .lego-toy:hover { transform: rotateX(45deg) rotateZ(-45deg) translateY(-20px); }
+
+  /* Utility Menu */
+  .utility-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-size: 0.7rem;
+    color: var(--light-muted);
+    opacity: 0.3;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: opacity 0.3s;
+  }
+  .utility-btn:hover { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<div class="playground">
+  <!-- CENTER -->
+  <div class="center-anchor">
+    <h1>kaden priebe</h1>
+    <p>biology + machine learning + philosophy</p>
+  </div>
+
+  <!-- BIO -->
+  <div class="quadrant top-left" onmouseenter="setCursor('bio')" onmouseleave="setCursor('')">
+    <div class="cell-toy">
+      <div class="organelle" style="width:30px;height:30px;top:20%;left:30%;"></div>
+      <div class="organelle" style="width:20px;height:20px;top:60%;left:50%;"></div>
+      <div class="organelle" style="width:40px;height:25px;top:40%;left:60%;border-radius:30%;"></div>
+    </div>
+  </div>
+
+  <!-- ML -->
+  <div class="quadrant top-right" onmouseenter="setCursor('ml')" onmouseleave="setCursor('')">
+    <canvas id="ml-canvas"></canvas>
+  </div>
+
+  <!-- PHILOSOPHY -->
+  <div class="quadrant bottom-left" onmouseenter="setCursor('phil')" onmouseleave="setCursor('')">
+    <div class="bust-toy">
+      <div class="bust-crack"></div>
+      <div class="bust-glow"></div>
+      <div style="position:absolute; bottom:0; left:0; right:0; height:60%; background:#ddd;"></div>
+    </div>
+  </div>
+
+  <!-- BUILDING -->
+  <div class="quadrant bottom-right" onmouseenter="setCursor('build')" onmouseleave="setCursor('')">
+    <div class="lego-toy">
+      <div class="lego-stud" style="left:15px;top:10px;"></div>
+      <div class="lego-stud" style="left:15px;top:40px;"></div>
+      <div class="lego-stud" style="left:45px;top:10px;"></div>
+      <div class="lego-stud" style="left:45px;top:40px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="utility-btn">Menu</div>
+
+<script>
+  const cursor = document.getElementById('cursor');
+  
+  // Cursor follow logic
+  document.addEventListener('mousemove', (e) => {
+    cursor.style.transform = `translate(${e.clientX - 6}px, ${e.clientY - 6}px)`;
+  });
+
+  function setCursor(type) {
+    cursor.className = '';
+    if (type) cursor.classList.add(type);
+  }
+
+  // Simple Neural Node Animation
+  const canvas = document.getElementById('ml-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 250;
+  canvas.height = 250;
+
+  const nodes = [];
+  for(let i=0; i<15; i++) {
+    nodes.push({
+      x: Math.random() * 250,
+      y: Math.random() * 250,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5
+    });
+  }
+
+  function animateML() {
+    ctx.clearRect(0, 0, 250, 250);
+    ctx.strokeStyle = 'rgba(124, 58, 237, 0.2)';
+    ctx.fillStyle = '#7c3aed';
+
+    nodes.forEach((n, i) => {
+      n.x += n.vx;
+      n.y += n.vy;
+      if(n.x < 0 || n.x > 250) n.vx *= -1;
+      if(n.y < 0 || n.y > 250) n.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      for(let j=i+1; j<nodes.length; j++) {
+        const n2 = nodes[j];
+        const dist = Math.hypot(n.x - n2.x, n.y - n2.y);
+        if(dist < 80) {
+          ctx.beginPath();
+          ctx.moveTo(n.x, n.y);
+          ctx.lineTo(n2.x, n2.y);
+          ctx.stroke();
+        }
+      }
+    });
+    requestAnimationFrame(animateML);
+  }
+  animateML();
+
+</script>
+
+</body>
+</html>

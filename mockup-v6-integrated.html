@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaden Priebe — V6 Integrated Workflow</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#fff;--text:#1a1a1a;--muted:#666;--light:#999;--border:rgba(0,0,0,.06);--border-h:rgba(0,0,0,.12);
+    --fh:'Plus Jakarta Sans',sans-serif;--fb:'Inter',sans-serif;
+    --c-hero:#4f46e5;--c-hero-s:#eef2ff;
+    --c-about:#0891b2;--c-about-s:#ecfeff;
+    --c-now:#059669;--c-now-s:#ecfdf5;
+    --c-proj:#d97706;--c-proj-s:#fffbeb;
+    --c-blog:#7c3aed;--c-blog-s:#f5f3ff;
+    --c-links:#e11d48;--c-links-s:#fff1f2;
+    --c-games:#ea580c;--c-games-s:#fff7ed;
+    --active-accent:var(--c-hero);--active-soft:var(--c-hero-s);
+  }
+  html{font-size:15px;-webkit-font-smoothing:antialiased;}
+  body{font-family:var(--fb);color:var(--text);background:var(--bg);line-height:1.6;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+  ::selection{background:var(--active-accent);color:#fff;}
+  h1,h2,h3,h4{font-family:var(--fh);letter-spacing:-.02em;}
+  a{text-decoration:none;color:inherit;}
+
+  /* ===== SHELL ===== */
+  .shell{flex:1;display:grid;grid-template-columns:1fr 250px;grid-template-rows:1fr 110px;overflow:hidden;}
+
+  /* ===== NAV ===== */
+  .topbar{
+    height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;padding:0 1.5rem;background:rgba(255,255,255,.92);
+    backdrop-filter:blur(10px);z-index:100;flex-shrink:0;
+  }
+  .topbar-logo{font-family:var(--fh);font-weight:700;font-size:1rem;letter-spacing:-.02em;cursor:pointer;transition:color .2s;}
+  .topbar-logo:hover{color:var(--c-hero);}
+  .nav-links{display:flex;gap:1.5rem;}
+  .nav-links a{font-size:.8rem;color:var(--muted);cursor:pointer;transition:color .2s;position:relative;padding-bottom:2px;}
+  .nav-links a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;border-radius:1px;transition:width .25s,background .25s;}
+  .nav-links a:hover::after,.nav-links a.active::after{width:100%;}
+  .nav-links a.active{font-weight:500;}
+  .n-about:hover,.n-about.active{color:var(--c-about);}.n-about:hover::after,.n-about.active::after{background:var(--c-about);}
+  .n-proj:hover,.n-proj.active{color:var(--c-proj);}.n-proj:hover::after,.n-proj.active::after{background:var(--c-proj);}
+  .n-games:hover,.n-games.active{color:var(--c-games);}.n-games:hover::after,.n-games.active::after{background:var(--c-games);}
+  .n-blog:hover,.n-blog.active{color:var(--c-blog);}.n-blog:hover::after,.n-blog.active::after{background:var(--c-blog);}
+  .n-links:hover,.n-links.active{color:var(--c-links);}.n-links:hover::after,.n-links.active::after{background:var(--c-links);}
+
+  /* ===== MAIN AREA (left column, both rows) ===== */
+  .main-col{grid-row:1/3;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;position:relative;}
+
+  /* ===== CONTENT PANEL ===== */
+  .content-area{flex:1;overflow:hidden;position:relative;}
+  .panel{
+    position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+    opacity:0;transform:translateY(12px);pointer-events:none;
+    transition:opacity .35s ease,transform .35s ease;
+    padding:1.5rem 2.5rem 2rem;
+  }
+  .panel.active{opacity:1;transform:translateY(0);pointer-events:all;}
+  .panel.exit-up{opacity:0;transform:translateY(-12px);}
+
+  /* ===== WORLD BAR ===== */
+  .world-bar{
+    height:110px;background:#fafafa;border-top:1px solid var(--border);
+    position:relative;overflow:hidden;flex-shrink:0;
+  }
+  .ground{position:absolute;bottom:0;left:0;right:0;height:44px;background:#f0f7f0;border-top:2px solid #d1e7d1;}
+  .road-m{position:absolute;left:0;right:0;bottom:20px;height:30px;background:#e5e7eb;border-top:2px solid #d1d5db;z-index:1;}
+  .road-m::after{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,#fff 0,#fff 14px,transparent 14px,transparent 28px);transform:translateY(-50%);}
+  .road-x{position:absolute;width:30px;bottom:50px;height:60px;background:#e5e7eb;border-radius:5px 5px 0 0;z-index:0;}
+  .road-x::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;background:repeating-linear-gradient(180deg,#fff 0,#fff 7px,transparent 7px,transparent 14px);transform:translateX(-50%);}
+  .rx1{left:12%;}.rx2{left:32%;}.rx3{left:52%;}.rx4{left:72%;}
+  .gsign{position:absolute;bottom:82px;transform:translateX(-50%);background:#fff;border:1.5px solid;border-radius:7px;padding:.18rem .45rem;font-size:.58rem;font-family:var(--fh);font-weight:600;white-space:nowrap;z-index:5;display:flex;align-items:center;gap:.2rem;box-shadow:0 2px 6px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s;}
+  .gsign:hover{transform:translateX(-50%) scale(1.08);}
+  .gs1{left:calc(12% + 15px);border-color:rgba(234,88,12,.3);color:var(--c-games);}
+  .gs2{left:calc(32% + 15px);border-color:rgba(124,58,237,.3);color:var(--c-blog);}
+  .gs3{left:calc(52% + 15px);border-color:rgba(5,150,105,.3);color:var(--c-now);}
+  .gs4{left:calc(72% + 15px);border-color:rgba(217,119,6,.3);color:var(--c-proj);}
+  .spole{position:absolute;bottom:50px;width:2px;height:32px;background:#d1d5db;z-index:4;}
+  .sp1{left:calc(12% + 15px);}.sp2{left:calc(32% + 15px);}.sp3{left:calc(52% + 15px);}.sp4{left:calc(72% + 15px);}
+  .tree{position:absolute;bottom:46px;z-index:3;font-size:1.2rem;}
+  #car{position:absolute;bottom:26px;left:50px;z-index:10;font-size:1.3rem;cursor:grab;filter:drop-shadow(0 2px 3px rgba(0,0,0,.12));user-select:none;}
+  #car.flip{transform:scaleX(-1);}
+  .dhint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--light);display:flex;align-items:center;gap:.35rem;z-index:20;}
+  .kh{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid var(--border-h);border-radius:3px;font-size:.5rem;background:#fff;}
+
+  /* ===== SIDEBAR (persistent) ===== */
+  .sidebar{
+    grid-row:1/3;display:flex;flex-direction:column;gap:.55rem;
+    padding:.85rem;overflow-y:auto;background:#fcfcfc;
+    transition:opacity .3s;
+  }
+  .widget{border:1px solid var(--border);border-radius:10px;padding:.75rem;background:#fff;transition:border-color .2s,transform .15s;}
+  .widget:hover{border-color:var(--border-h);transform:translateY(-1px);}
+  .wl{font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem;display:flex;align-items:center;gap:.3rem;}
+  .widget h4{font-size:.8rem;font-weight:600;margin-bottom:.12rem;}
+  .widget p,.widget li{font-size:.72rem;color:var(--muted);line-height:1.5;}
+
+  .w-now .wl{color:var(--c-now);}.w-now:hover{border-color:rgba(5,150,105,.2);}
+  .w-music .wl{color:var(--c-blog);}.w-music:hover{border-color:rgba(124,58,237,.2);}
+  .mbar{display:flex;align-items:flex-end;gap:2px;height:16px;margin-top:.3rem;}
+  .mbar span{width:3px;border-radius:2px;background:var(--c-blog);animation:bo .8s ease-in-out infinite alternate;}
+  .mbar span:nth-child(1){height:5px;animation-delay:0s;}.mbar span:nth-child(2){height:11px;animation-delay:.15s;}
+  .mbar span:nth-child(3){height:7px;animation-delay:.3s;}.mbar span:nth-child(4){height:14px;animation-delay:.1s;}
+  .mbar span:nth-child(5){height:9px;animation-delay:.25s;}
+  @keyframes bo{to{height:3px;}}
+
+  .w-coffee .wl{color:var(--c-proj);}.w-coffee:hover{border-color:rgba(217,119,6,.2);}
+  .ccups{font-size:.9rem;letter-spacing:2px;margin-top:.2rem;}
+
+  .w-lb .wl{color:var(--c-games);}.w-lb:hover{border-color:rgba(234,88,12,.2);}
+  .lbr{display:flex;justify-content:space-between;font-size:.7rem;padding:.22rem 0;border-bottom:1px solid var(--border);}
+  .lbr:last-child{border-bottom:none;}
+  .lbs{font-weight:600;color:var(--c-games);}
+
+  .w-links .wl{color:var(--c-links);}.w-links:hover{border-color:rgba(225,29,72,.2);}
+  .ql{display:flex;flex-direction:column;gap:.2rem;}
+  .ql a{font-size:.72rem;color:var(--muted);display:flex;justify-content:space-between;padding:.18rem 0;transition:color .2s;}
+  .ql a:hover{color:var(--c-links);}
+
+  .w-eggs{border-style:dashed;background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(0,0,0,.008) 8px,rgba(0,0,0,.008) 16px);}
+  .w-eggs .wl{color:var(--light);}
+  .egp{display:flex;gap:3px;margin-top:.3rem;}
+  .ef,.eh{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.55rem;}
+  .ef{background:#fef3c7;}.eh{background:#f3f4f6;color:#d1d5db;}
+
+  /* ===== SHARED PAGE STYLES ===== */
+  .pg-back{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--muted);cursor:pointer;margin-bottom:1.25rem;transition:color .2s;}
+  .pg-back:hover{color:var(--active-accent);}
+  .pg-title{font-size:2rem;font-weight:800;line-height:1.1;margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem;}
+  .pg-sub{font-size:.95rem;color:var(--muted);margin-bottom:2rem;}
+  .sdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+
+  /* Badges */
+  .badge{font-size:.72rem;font-weight:500;padding:.22rem .65rem;border-radius:20px;display:inline-block;}
+  .mtag{font-size:.63rem;padding:.1rem .42rem;border-radius:12px;font-weight:500;display:inline-block;}
+
+  /* Interactive stubs */
+  .istub{border:1.5px dashed;border-radius:12px;padding:1.1rem;display:flex;align-items:center;gap:.8rem;margin-top:2rem;transition:border-color .2s;}
+  .istub:hover{filter:brightness(.98);}
+  .si{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+  .istub h4{font-size:.82rem;font-weight:600;margin-bottom:.08rem;}
+  .istub p{font-size:.75rem;color:var(--muted);}
+  .sbadge{font-size:.6rem;padding:.13rem .42rem;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-left:auto;flex-shrink:0;align-self:flex-start;}
+
+  /* ===== HUB ===== */
+  .hero-name{font-size:3rem;font-weight:800;line-height:1.05;letter-spacing:-.03em;margin-bottom:.5rem;}
+  .hero-sub{font-size:1rem;color:var(--muted);max-width:28rem;margin-bottom:1.25rem;}
+  .hero-badges{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:1.4rem;}
+  .hero-btns{display:flex;gap:.7rem;margin-bottom:1.75rem;}
+  .hero-btns a{font-size:.82rem;font-weight:500;padding:.48rem 1.15rem;border-radius:6px;cursor:pointer;transition:all .2s;}
+  .bp{background:var(--c-hero);color:#fff;}.bp:hover{opacity:.85;}
+  .bs{border:1px solid var(--border-h);color:var(--text);}.bs:hover{border-color:var(--c-hero);color:var(--c-hero);}
+  .ehint{font-size:.7rem;color:var(--light);opacity:.3;margin-top:.8rem;cursor:default;transition:opacity .3s;}.ehint:hover{opacity:1;}
+
+  .bento{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;}
+  .bc{border:1px solid var(--border);border-radius:10px;padding:.8rem;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .18s;}
+  .bc:hover{box-shadow:0 3px 14px rgba(0,0,0,.04);transform:translateY(-2px);}
+  .bc h3{font-size:.8rem;font-weight:600;margin-bottom:.15rem;display:flex;align-items:center;gap:.3rem;}
+  .bc p{font-size:.73rem;color:var(--muted);line-height:1.5;}
+  .bdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .bc .tr{display:flex;gap:.25rem;margin-top:.3rem;}
+  .bf{grid-column:1/-1;}
+  .c-about:hover{border-color:rgba(8,145,178,.3);}.c-proj:hover{border-color:rgba(217,119,6,.3);}
+  .c-blog:hover{border-color:rgba(124,58,237,.3);}.c-now:hover{border-color:rgba(5,150,105,.3);}
+  .c-links:hover{border-color:rgba(225,29,72,.3);}.c-games:hover{border-color:rgba(234,88,12,.3);}
+
+  /* ===== ABOUT ===== */
+  .abh{display:flex;gap:2.2rem;align-items:flex-start;margin-bottom:2.2rem;}
+  .abph{width:160px;height:200px;border-radius:14px;flex-shrink:0;background:var(--c-about-s);display:flex;align-items:center;justify-content:center;color:var(--c-about);font-size:.82rem;font-weight:500;}
+  .abt p{margin-bottom:.85rem;font-size:.92rem;line-height:1.75;}
+  .abt a{color:var(--c-about);}.abt a:hover{text-decoration:underline;}
+  .abs{margin-top:2.2rem;}
+  .abs h2{font-size:1.2rem;margin-bottom:1rem;display:flex;align-items:center;gap:.4rem;}
+  .tl{border-left:2px solid var(--c-about-s);padding-left:1.4rem;display:flex;flex-direction:column;gap:1.3rem;}
+  .tli{position:relative;}
+  .tli::before{content:'';position:absolute;left:-1.65rem;top:5px;width:10px;height:10px;border-radius:50%;background:var(--c-about);}
+  .tli h3{font-size:.92rem;margin-bottom:.1rem;}
+  .tld{font-size:.76rem;color:var(--c-about);font-weight:500;margin-bottom:.2rem;}
+  .tli p{font-size:.85rem;color:var(--muted);}
+
+  /* ===== PROJECTS ===== */
+  .pg-lg{display:grid;grid-template-columns:1fr 1fr;gap:1.15rem;}
+  .pc{border:1px solid var(--border);border-radius:12px;padding:1.35rem;transition:border-color .2s,box-shadow .2s,transform .18s;cursor:pointer;}
+  .pc:hover{border-color:rgba(217,119,6,.25);box-shadow:0 4px 16px rgba(217,119,6,.06);transform:translateY(-2px);}
+  .pc .ppv{width:100%;height:100px;background:var(--c-proj-s);border-radius:8px;margin-bottom:.85rem;display:flex;align-items:center;justify-content:center;color:var(--c-proj);font-size:.78rem;font-weight:500;}
+  .pc h3{font-size:1rem;margin-bottom:.25rem;}
+  .pc p{font-size:.85rem;color:var(--muted);line-height:1.6;}
+  .ptags{display:flex;gap:.35rem;margin-top:.6rem;flex-wrap:wrap;}
+  .pt{font-size:.7rem;padding:.15rem .5rem;border-radius:20px;background:var(--c-proj-s);color:var(--c-proj);font-weight:500;}
+  .pstub{border:1.5px dashed rgba(217,119,6,.2);border-radius:12px;padding:1.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:100px;}
+  .pstub h3{font-size:.9rem;color:var(--muted);margin-bottom:.2rem;}.pstub p{font-size:.78rem;color:var(--light);}
+
+  /* ===== BLOG ===== */
+  .bli{padding:1.3rem 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity .2s;}
+  .bli:hover{opacity:.7;}.bli:last-child{border-bottom:none;}
+  .blm{display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem;}
+  .blmd{font-size:.78rem;color:var(--muted);}
+  .blmc{font-size:.66rem;padding:.13rem .45rem;border-radius:20px;background:var(--c-blog-s);color:var(--c-blog);font-weight:500;}
+  .bli h3{font-size:1.12rem;margin-bottom:.25rem;}
+  .bli p{font-size:.88rem;color:var(--muted);line-height:1.65;}
+  .blr{font-size:.82rem;color:var(--c-blog);font-weight:500;margin-top:.4rem;display:inline-block;}
+
+  .bsignup{margin-top:2.2rem;padding:1.75rem;border:1.5px dashed rgba(124,58,237,.25);border-radius:14px;text-align:center;background:linear-gradient(135deg,var(--c-blog-s) 0%,#fff 100%);}
+  .bsignup h3{font-size:1.05rem;margin-bottom:.25rem;}
+  .bsignup>p{font-size:.85rem;color:var(--muted);margin-bottom:.85rem;}
+  .bslever{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.3rem;background:var(--c-blog);color:#fff;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer;transition:transform .15s;}
+  .bslever:hover{transform:scale(1.04);}
+
+  /* ===== NOW ===== */
+  .ngl{display:grid;grid-template-columns:1fr 1fr;gap:1.15rem;}
+  .nc{padding:1.35rem;background:#fafafa;border-radius:12px;border:1px solid var(--border);transition:border-color .2s,transform .18s;}
+  .nc:hover{border-color:rgba(5,150,105,.2);transform:translateY(-1px);}
+  .nlb{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-now);margin-bottom:.3rem;}
+  .nc h3{font-size:.95rem;margin-bottom:.4rem;}
+  .nc p,.nc li{font-size:.85rem;color:var(--muted);line-height:1.7;}
+  .nc ul{padding-left:1.1rem;}
+
+  /* ===== LINKS ===== */
+  .lkg{display:flex;flex-direction:column;gap:.75rem;}
+  .lk{display:flex;align-items:center;padding:1.15rem 1.35rem;border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .18s;}
+  .lk:hover{border-color:rgba(225,29,72,.2);box-shadow:0 3px 14px rgba(225,29,72,.06);transform:translateY(-1px);}
+  .lki{font-size:1.3rem;margin-right:.85rem;}
+  .lkf{flex:1;}
+  .lkf h3{font-size:.95rem;margin-bottom:.08rem;}
+  .lkf p{font-size:.82rem;color:var(--muted);}
+  .lka{color:#fda4af;font-size:1.1rem;transition:color .2s;}
+  .lk:hover .lka{color:var(--c-links);}
+
+  /* ===== GAMES ===== */
+  .gintro{font-size:.95rem;color:var(--muted);margin-bottom:1.75rem;max-width:34rem;line-height:1.7;}
+  .ggl{display:grid;grid-template-columns:1fr 1fr;gap:1.15rem;}
+  .gc{border:1px solid var(--border);border-radius:14px;padding:1.5rem;cursor:pointer;display:flex;gap:1.1rem;align-items:flex-start;transition:border-color .2s,box-shadow .2s,transform .18s;}
+  .gc:hover{border-color:rgba(234,88,12,.3);box-shadow:0 4px 16px rgba(234,88,12,.06);transform:translateY(-2px);}
+  .gci{width:50px;height:50px;border-radius:13px;background:var(--c-games-s);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+  .gc h3{font-size:1rem;margin-bottom:.2rem;}
+  .gc p{font-size:.82rem;color:var(--muted);line-height:1.55;}
+  .gtag{display:inline-block;font-size:.66rem;padding:.13rem .45rem;border-radius:20px;background:var(--c-games-s);color:var(--c-games);font-weight:500;margin-top:.4rem;}
+
+  .lbf{margin-top:2.2rem;border:1px solid var(--border);border-radius:14px;padding:1.5rem;}
+  .lbf h2{font-size:1.15rem;margin-bottom:.2rem;}
+  .lbf .lbsub{font-size:.8rem;color:var(--muted);margin-bottom:1.1rem;}
+  .lbt-r{display:flex;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.85rem;}
+  .lbt-r:last-child{border-bottom:none;}
+  .lbt-rk{width:32px;font-weight:700;color:var(--muted);}
+  .lbt-nm{flex:1;font-weight:500;}
+  .lbt-gm{flex:.7;color:var(--muted);font-size:.8rem;}
+  .lbt-sc{font-weight:600;color:var(--c-games);}
+
+  /* Portal */
+  .portal{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.65rem;opacity:0;pointer-events:none;transition:opacity .3s;}
+  .portal.active{opacity:1;pointer-events:all;}
+  .portal h2{font-family:var(--fh);font-size:1.8rem;font-weight:800;}
+  .portal p{color:var(--muted);font-size:.92rem;}
+  .portal button{margin-top:.4rem;font-size:.8rem;padding:.38rem .9rem;border-radius:6px;border:1px solid var(--border-h);background:none;cursor:pointer;font-family:var(--fb);transition:all .2s;}
+  .portal button:hover{border-color:var(--text);}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="topbar">
+  <span class="topbar-logo" onclick="go('hub')">kaden priebe</span>
+  <div class="nav-links" id="navlinks">
+    <a class="n-about" data-v="about">who's this guy?</a>
+    <a class="n-proj" data-v="projects">what i've built</a>
+    <a class="n-games" data-v="games">play something</a>
+    <a class="n-blog" data-v="blog">random thoughts</a>
+    <a class="n-links" data-v="links">let's talk</a>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div class="shell">
+
+<!-- ===== MAIN COLUMN ===== -->
+<div class="main-col">
+<div class="content-area">
+
+<!-- HUB PANEL -->
+<div class="panel active" id="p-hub" data-accent="hero">
+  <h1 class="hero-name">hey, i'm kaden.</h1>
+  <p class="hero-sub">cornell student. researcher. builder of things. i like making stuff that's actually fun to use.</p>
+  <div class="hero-badges">
+    <span class="badge" style="background:var(--c-about-s);color:var(--c-about);">Cornell '28</span>
+    <span class="badge" style="background:var(--c-now-s);color:var(--c-now);">Researcher</span>
+    <span class="badge" style="background:var(--c-blog-s);color:var(--c-blog);">Creator</span>
+    <span class="badge" style="background:var(--c-proj-s);color:var(--c-proj);">Builder</span>
+  </div>
+  <div class="hero-btns">
+    <a class="bp" onclick="go('projects')">see what i've built →</a>
+    <a class="bs" onclick="go('about')">the backstory</a>
+  </div>
+  <div class="bento">
+    <div class="bc c-about" onclick="go('about')">
+      <h3><span class="bdot" style="background:var(--c-about);"></span>who's this guy?</h3>
+      <p>Bio, cancer research, Cornell life, and why I build things.</p>
+      <div class="tr"><span class="mtag" style="background:var(--c-about-s);color:var(--c-about);">Bio</span><span class="mtag" style="background:var(--c-about-s);color:var(--c-about);">Story</span></div>
+    </div>
+    <div class="bc c-proj" onclick="go('projects')">
+      <h3><span class="bdot" style="background:var(--c-proj);"></span>what i've built</h3>
+      <p>Course planner, neural decoding,  and more.</p>
+      <div class="tr"><span class="mtag" style="background:var(--c-proj-s);color:var(--c-proj);">4 projects</span></div>
+    </div>
+    <div class="bc c-blog" onclick="go('blog')">
+      <h3><span class="bdot" style="background:var(--c-blog);"></span>random thoughts</h3>
+      <p>Writing about building, learning, and life at Cornell.</p>
+      <div class="tr"><span class="mtag" style="background:var(--c-blog-s);color:var(--c-blog);">3 posts</span></div>
+    </div>
+    <div class="bc c-now" onclick="go('now')">
+      <h3><span class="bdot" style="background:var(--c-now);"></span>right now</h3>
+      <p>Lab research, ML coursework, side projects, and YouTube.</p>
+      <div class="tr"><span class="mtag" style="background:var(--c-now-s);color:var(--c-now);">Feb 2026</span></div>
+    </div>
+    <div class="bc c-games bf" onclick="go('games')">
+      <h3><span class="bdot" style="background:var(--c-games);"></span>play something</h3>
+      <p>Debug code, identify cells, race to type abstracts — or drive the car below into a road. 🚗</p>
+      <div class="tr"><span class="mtag" style="background:var(--c-games-s);color:var(--c-games);">4 games</span><span class="mtag" style="background:var(--c-games-s);color:var(--c-games);">Leaderboard</span></div>
+    </div>
+  </div>
+  <p class="ehint">psst... try the konami code ↑↑↓↓←→←→BA</p>
+</div>
+
+<!-- ABOUT PANEL -->
+<div class="panel" id="p-about" data-accent="about">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-about);"></span>who's this guy?</h1>
+  <p class="pg-sub">The short version: curious about everything, building to learn.</p>
+  <div class="abh">
+    <div class="abph">photo</div>
+    <div class="abt">
+      <p>I'm <strong>Kaden Priebe</strong>, a student at Cornell studying at the intersection of biology and computation. By day I'm in the lab working on cancer research — by night I'm building side projects, making <a href="#">YouTube videos</a>, and probably debugging something that should've worked the first time.</p>
+      <p>I got into research through a genuine curiosity about how cells make decisions — how a tumor cell "decides" to metastasize, how gene regulatory networks coordinate. That same curiosity drives everything else I do.</p>
+      <p>I believe the best way to learn something is to build something with it. This site is proof of that philosophy.</p>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem;">
+        <span class="badge" style="background:var(--c-about-s);color:var(--c-about);">Cornell '28</span>
+        <span class="badge" style="background:var(--c-about-s);color:var(--c-about);">Researcher</span>
+        <span class="badge" style="background:var(--c-about-s);color:var(--c-about);">Creator</span>
+        <span class="badge" style="background:var(--c-about-s);color:var(--c-about);">Builder</span>
+      </div>
+    </div>
+  </div>
+  <div class="abs">
+    <h2><span class="sdot" style="background:var(--c-about);"></span>the story so far</h2>
+    <div class="tl">
+      <div class="tli"><div class="tld">2024 — Present</div><h3>Cornell University</h3><p>Studying biology with a computational focus. Working in a cancer biology lab on tumor microenvironments and gene expression patterns.</p></div>
+      <div class="tli"><div class="tld">2023</div><h3>Started Building</h3><p>First side projects, first YouTube videos, first time realizing that building things is the best way to learn.</p></div>
+      <div class="tli"><div class="tld">2022</div><h3>Research Spark</h3><p>Summer research program that changed everything — the intersection of biology and computation.</p></div>
+    </div>
+  </div>
+  <div class="istub" style="border-color:rgba(8,145,178,.25);">
+    <div class="si" style="background:var(--c-about-s);color:var(--c-about);">✨</div>
+    <div><h4>Scroll-triggered animations</h4><p>Photo slides in, text fades up, timeline items stagger. Badges pop in one by one.</p></div>
+    <span class="sbadge" style="background:var(--c-about-s);color:var(--c-about);">Phase 3</span>
+  </div>
+</div>
+
+<!-- PROJECTS PANEL -->
+<div class="panel" id="p-projects" data-accent="proj">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-proj);"></span>what i've built</h1>
+  <p class="pg-sub">Real projects, stubbed ambitions, and everything in between.</p>
+  <div class="pg-lg">
+    <div class="pc"><div class="ppv">screenshot</div><h3>Cornell Course Planner</h3><p>Smart schedule builder with AI recommendations and requirement tracking.</p><div class="ptags"><span class="pt">Next.js</span><span class="pt">TypeScript</span><span class="pt">AI</span></div></div>
+    <div class="pc"><div class="ppv">visualization</div><h3>Neural Decoding Pipeline</h3><p>Deep learning models for decoding neural activity from calcium imaging.</p><div class="ptags"><span class="pt">Python</span><span class="pt">PyTorch</span><span class="pt">Neuroscience</span></div></div>
+    <div class="pc"><div class="ppv">meta</div><h3>This Website</h3><p>The site you're on. Easter eggs, minigames, and a real leaderboard.</p><div class="ptags"><span class="pt">Next.js</span><span class="pt">MDX</span><span class="pt">Supabase</span></div></div>
+    <div class="pstub"><h3>🧪 Next research project</h3><p>Coming soon — check back</p></div>
+    <div class="pstub"><h3>💡 Next side project</h3><p>Ideas are brewing</p></div>
+  </div>
+  <div class="istub" style="border-color:rgba(217,119,6,.25);">
+    <div class="si" style="background:var(--c-proj-s);color:var(--c-proj);">🖼</div>
+    <div><h4>Hover preview + cursor-follow screenshots</h4><p>Live screenshot preview follows mouse. Click expands to full detail page with README and demo.</p></div>
+    <span class="sbadge" style="background:var(--c-proj-s);color:var(--c-proj);">Phase 3</span>
+  </div>
+</div>
+
+<!-- BLOG PANEL -->
+<div class="panel" id="p-blog" data-accent="blog">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-blog);"></span>random thoughts</h1>
+  <p class="pg-sub">Writing about building, learning, and whatever's on my mind.</p>
+  <div>
+    <div class="bli"><div class="blm"><span class="blmd">Feb 20, 2026</span><span class="blmc">building</span><span style="font-size:.76rem;color:var(--muted);">· 5 min</span></div><h3>Why I Started Building Instead of Just Learning</h3><p>The gap between tutorials and real projects is where all the interesting stuff happens.</p><span class="blr">Read post →</span></div>
+    <div class="bli"><div class="blm"><span class="blmd">Feb 12, 2026</span><span class="blmc">life</span><span style="font-size:.76rem;color:var(--muted);">· 8 min</span></div><h3>My First Semester at Cornell, Unfiltered</h3><p>The good, the hard, and the surprisingly fun parts. Gorges, late nights, and figuring it out.</p><span class="blr">Read post →</span></div>
+    <div class="bli"><div class="blm"><span class="blmd">Jan 28, 2026</span><span class="blmc">deep learning</span><span style="font-size:.76rem;color:var(--muted);">· 6 min</span></div><h3>Deep Learning on a Budget: What Actually Works</h3><p>You don't need an A100. Here's what I've learned training models on consumer hardware.</p><span class="blr">Read post →</span></div>
+  </div>
+  <div class="bsignup"><h3>🎰 Spin to subscribe</h3><p>No boring email input. Pull the lever to reveal a surprise — and maybe subscribe.</p><div class="bslever">🎰 Pull the lever</div><p style="font-size:.7rem;color:var(--light);margin-top:.6rem;">Interactive signup stub — Phase 4</p></div>
+  <div class="istub" style="border-color:rgba(124,58,237,.25);margin-top:2rem;">
+    <div class="si" style="background:var(--c-blog-s);color:var(--c-blog);">📖</div>
+    <div><h4>Reading progress + emoji reactions</h4><p>Progress bar on articles. React with emoji, no login needed. Estimated read time.</p></div>
+    <span class="sbadge" style="background:var(--c-blog-s);color:var(--c-blog);">Phase 4</span>
+  </div>
+</div>
+
+<!-- NOW PANEL -->
+<div class="panel" id="p-now" data-accent="now">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-now);"></span>what i'm up to right now</h1>
+  <p class="pg-sub">A snapshot of my life, updated whenever things change. <span style="font-size:.82rem;color:var(--light);">Last updated: February 2026</span></p>
+  <div class="ngl">
+    <div class="nc"><div class="nlb">Research</div><h3>Cancer Biology Lab</h3><p>Gene expression patterns in MCF7 cell lines. Running assays, analyzing data, learning how cells make decisions under stress.</p></div>
+    <div class="nc"><div class="nlb">Coursework</div><h3>Spring 2026</h3><ul><li>CS 3780 — Intro to ML</li><li>Deep learning independent study</li><li>Genetics & molecular biology</li></ul></div>
+    <div class="nc"><div class="nlb">Building</div><h3>Side Projects</h3><p>This website, a Cornell course planner, and neural decoding from calcium imaging data.</p></div>
+    <div class="nc"><div class="nlb">Creating</div><h3>YouTube</h3><p>Videos about college, coding, and the intersection of biology and tech. Growing slowly but genuinely.</p></div>
+    <div class="nc"><div class="nlb">Reading</div><h3>Papers & Books</h3><p>Attention mechanisms in transformers. Cancer biology review papers for lab.</p></div>
+    <div class="nc"><div class="nlb">Life</div><h3>Day to Day</h3><p>Too much coffee, not enough sleep. Library, lab, and trying to enjoy college.</p></div>
+  </div>
+  <div class="istub" style="border-color:rgba(5,150,105,.25);">
+    <div class="si" style="background:var(--c-now-s);color:var(--c-now);">📡</div>
+    <div><h4>Live status + Spotify now-playing</h4><p>Real-time indicator synced from sidebar. Spotify integration in v2. Cards animate on entry.</p></div>
+    <span class="sbadge" style="background:var(--c-now-s);color:var(--c-now);">Phase 3–4</span>
+  </div>
+</div>
+
+<!-- LINKS PANEL -->
+<div class="panel" id="p-links" data-accent="links">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-links);"></span>let's talk</h1>
+  <p class="pg-sub">I'm online in the usual places. I actually reply to emails.</p>
+  <div class="lkg">
+    <div class="lk"><span class="lki">📺</span><div class="lkf"><h3>YouTube</h3><p>Videos about college, coding, science. New uploads... eventually.</p></div><span class="lka">→</span></div>
+    <div class="lk"><span class="lki">💻</span><div class="lkf"><h3>GitHub</h3><p>Open source projects and experiments.</p></div><span class="lka">→</span></div>
+    <div class="lk"><span class="lki">💼</span><div class="lkf"><h3>LinkedIn</h3><p>The professional version of me. Same person, slightly more formal.</p></div><span class="lka">→</span></div>
+    <div class="lk"><span class="lki">✉️</span><div class="lkf"><h3>Email</h3><p>kaden@cornell.edu — reach out about anything. I read them all.</p></div><span class="lka">→</span></div>
+  </div>
+</div>
+
+<!-- GAMES PANEL -->
+<div class="panel" id="p-games" data-accent="games">
+  <a class="pg-back" onclick="go('hub')">← back home</a>
+  <h1 class="pg-title"><span class="sdot" style="background:var(--c-games);"></span>play something</h1>
+  <p class="pg-sub">Games that connect to my actual life. Compete for the leaderboard.</p>
+  <p class="gintro">Every game here comes from something I actually do — debugging code at 2am, identifying cells under a microscope, speed-reading papers, or pipetting under pressure. These are <em>my</em> games.</p>
+  <div class="ggl">
+    <div class="gc"><div class="gci">🐛</div><div class="game-info"><h3>Bug Hunter</h3><p>Real code with real bugs. Find it before time runs out. From off-by-ones to async race conditions.</p><span class="gtag">Debugging · 30s rounds</span></div></div>
+    <div class="gc"><div class="gci">🧬</div><div class="game-info"><h3>Cell or Not</h3><p>Microscopy flash cards. Cancer cell or normal tissue? Trained my eye in the lab — now train yours.</p><span class="gtag">Biology · Pattern recognition</span></div></div>
+    <div class="gc"><div class="gci">⌨️</div><div class="game-info"><h3>Abstract Racer</h3><p>Speed-type real sentences from published research papers. Bonus for my lab's publications.</p><span class="gtag">Typing · Academic speedrun</span></div></div>
+    <div class="gc"><div class="gci">🔬</div><div class="game-info"><h3>Lab Rush</h3><p>Pipette right volumes, right order, before time runs out. Miss a step and the experiment fails.</p><span class="gtag">Precision · Lab sim</span></div></div>
+  </div>
+  <div class="lbf"><h2>🏆 Leaderboard</h2><p class="lbsub">All games · All time</p>
+    <div class="lbt-r"><span class="lbt-rk">1.</span><span class="lbt-nm">speedster42</span><span class="lbt-gm">Abstract Racer</span><span class="lbt-sc">12,450</span></div>
+    <div class="lbt-r"><span class="lbt-rk">2.</span><span class="lbt-nm">cornell_gamer</span><span class="lbt-gm">Bug Hunter</span><span class="lbt-sc">11,200</span></div>
+    <div class="lbt-r"><span class="lbt-rk">3.</span><span class="lbt-nm">big_red_fan</span><span class="lbt-gm">Lab Rush</span><span class="lbt-sc">8,340</span></div>
+    <div class="lbt-r"><span class="lbt-rk">4.</span><span class="lbt-nm">bio_nerd_22</span><span class="lbt-gm">Cell or Not</span><span class="lbt-sc">7,890</span></div>
+    <div class="lbt-r"><span class="lbt-rk">5.</span><span class="lbt-nm" style="color:var(--light);">you?</span><span class="lbt-gm"></span><span class="lbt-sc" style="color:var(--light);">play to rank</span></div>
+  </div>
+  <div class="istub" style="border-color:rgba(234,88,12,.25);margin-top:2rem;">
+    <div class="si" style="background:var(--c-games-s);color:var(--c-games);">🏗</div>
+    <div><h4>Playable inline + Supabase leaderboard</h4><p>Games run in-page. Scores submit to real backend with anti-cheat. Also reachable via the car.</p></div>
+    <span class="sbadge" style="background:var(--c-games-s);color:var(--c-games);">Phase 5</span>
+  </div>
+</div>
+
+</div><!-- /content-area -->
+
+<!-- WORLD BAR (always visible) -->
+<div class="world-bar" id="world">
+  <div class="ground"></div>
+  <div class="road-m"></div>
+  <div class="road-x rx1"></div><div class="road-x rx2"></div><div class="road-x rx3"></div><div class="road-x rx4"></div>
+  <div class="spole sp1"></div><div class="spole sp2"></div><div class="spole sp3"></div><div class="spole sp4"></div>
+  <div class="gsign gs1" onclick="openPortal('🧬 Cell or Not','Microscopy flash cards — cancer cell or normal tissue?')">🧬 Cell ID</div>
+  <div class="gsign gs2" onclick="openPortal('🐛 Bug Hunter','Find the bug in real code before time runs out.')">🐛 Debug</div>
+  <div class="gsign gs3" onclick="openPortal('⌨️ Abstract Racer','Speed-type sentences from real research papers.')">⌨️ Abstract Racer</div>
+  <div class="gsign gs4" onclick="openPortal('🔬 Lab Rush','Pipette right volumes in the right order.')">🔬 Lab Rush</div>
+  <div class="tree" style="left:3%;">🌳</div><div class="tree" style="left:22%;">🌲</div><div class="tree" style="left:42%;">🌳</div><div class="tree" style="left:62%;">🌲</div><div class="tree" style="left:82%;">🌳</div><div class="tree" style="left:92%;">🌲</div>
+  <div id="car">🚗</div>
+  <div class="dhint"><span class="kh">←</span><span class="kh">→</span>drive<span class="kh">↑</span>enter</div>
+</div>
+</div><!-- /main-col -->
+
+<!-- SIDEBAR (persistent across all views) -->
+<div class="sidebar">
+  <div class="widget w-now"><div class="wl"><span>🟢</span> Currently</div><h4>In the lab</h4><p>Gene expression analysis on MCF7 tumor samples</p></div>
+  <div class="widget w-music"><div class="wl"><span>🎵</span> Listening to</div><h4>Redbone</h4><p>Childish Gambino</p><div class="mbar"><span></span><span></span><span></span><span></span><span></span></div></div>
+  <div class="widget w-coffee"><div class="wl"><span>☕</span> Coffee today</div><div class="ccups">☕☕☕<span style="opacity:.2;">☕☕</span></div><p style="margin-top:.2rem;">3 of 5 (it's only 2pm)</p></div>
+  <div class="widget w-lb"><div class="wl"><span>🏆</span> Top Scores</div>
+    <div class="lbr"><span>1. speedster42</span><span class="lbs">12,450</span></div>
+    <div class="lbr"><span>2. cornell_gamer</span><span class="lbs">11,200</span></div>
+    <div class="lbr"><span>3. big_red_fan</span><span class="lbs">8,340</span></div>
+    <div class="lbr"><span style="color:var(--light);">4. you?</span><span class="lbs" style="color:var(--light);">—</span></div>
+  </div>
+  <div class="widget w-links"><div class="wl"><span>🔗</span> Connect</div><div class="ql"><a href="#">YouTube <span>→</span></a><a href="#">GitHub <span>→</span></a><a href="#">LinkedIn <span>→</span></a><a href="#">Email <span>→</span></a></div></div>
+  <div class="widget w-eggs"><div class="wl"><span>🥚</span> Secrets found</div><div class="egp"><span class="ef">🥚</span><span class="ef">🥚</span><span class="eh">?</span><span class="eh">?</span><span class="eh">?</span><span class="eh">?</span><span class="eh">?</span></div><p style="margin-top:.25rem;">2 of 7 — keep exploring</p></div>
+</div>
+
+</div><!-- /shell -->
+
+<!-- PORTAL -->
+<div class="portal" id="portal">
+  <h2 id="ptitle"></h2>
+  <p id="pdesc"></p>
+  <button onclick="closePortal()">← back to site</button>
+</div>
+
+<script>
+const accentMap = {
+  hub:'hero', about:'about', projects:'proj', blog:'blog',
+  now:'now', links:'links', games:'games'
+};
+const colorMap = {
+  hero:'var(--c-hero)', about:'var(--c-about)', proj:'var(--c-proj)',
+  blog:'var(--c-blog)', now:'var(--c-now)', links:'var(--c-links)', games:'var(--c-games)'
+};
+
+let current = 'hub';
+
+function go(id) {
+  if (id === current) return;
+
+  const prev = document.getElementById('p-' + current);
+  const next = document.getElementById('p-' + id);
+  if (!next) return;
+
+  // Animate out
+  prev.classList.remove('active');
+  prev.classList.add('exit-up');
+  setTimeout(() => prev.classList.remove('exit-up'), 350);
+
+  // Animate in
+  next.scrollTop = 0;
+  next.classList.add('active');
+
+  // Update accent
+  const key = accentMap[id] || 'hero';
+  document.documentElement.style.setProperty('--active-accent', colorMap[key]);
+  document.documentElement.style.setProperty('--active-soft', `var(--c-${key}-s)`);
+
+  // Update nav
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  const navA = document.querySelector(`.nav-links a[data-v="${id}"]`);
+  if (navA) navA.classList.add('active');
+
+  current = id;
+}
+
+// Nav click delegation
+document.querySelectorAll('.nav-links a[data-v]').forEach(a => {
+  a.addEventListener('click', () => go(a.dataset.v));
+});
+
+// === Car ===
+const car = document.getElementById('car');
+const world = document.getElementById('world');
+let carX = 50, carSpd = 0, keys = {}, carDir = 1;
+
+const exits = [
+  { center: 12, label: '🧬 Cell or Not', desc: 'Microscopy flash cards — cancer cell or normal tissue?' },
+  { center: 32, label: '🐛 Bug Hunter', desc: 'Find the bug in real code before time runs out.' },
+  { center: 52, label: '⌨️ Abstract Racer', desc: 'Speed-type sentences from real research papers.' },
+  { center: 72, label: '🔬 Lab Rush', desc: 'Pipette the right volumes in the right order.' },
+];
+
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => keys[e.key] = false);
+
+(function loop() {
+  if (!world.offsetWidth) { requestAnimationFrame(loop); return; }
+  const ww = world.offsetWidth;
+  if (keys.ArrowRight) { carSpd = Math.min(carSpd + .45, 5.5); carDir = 1; }
+  else if (keys.ArrowLeft) { carSpd = Math.max(carSpd - .45, -5.5); carDir = -1; }
+  else { carSpd *= .91; if (Math.abs(carSpd) < .08) carSpd = 0; }
+  carX = Math.max(10, Math.min(ww - 30, carX + carSpd));
+  car.style.left = carX + 'px';
+  car.classList.toggle('flip', carDir === -1);
+
+  if (keys.ArrowUp) {
+    const pct = (carX / ww) * 100;
+    for (const ex of exits) {
+      if (Math.abs(pct - ex.center) < 5) { openPortal(ex.label, ex.desc); keys.ArrowUp = false; break; }
+    }
+  }
+  requestAnimationFrame(loop);
+})();
+
+function openPortal(t, d) {
+  document.getElementById('ptitle').textContent = t;
+  document.getElementById('pdesc').textContent = d;
+  document.getElementById('portal').classList.add('active');
+}
+function closePortal() { document.getElementById('portal').classList.remove('active'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePortal(); });
+</script>
+</body>
+</html>

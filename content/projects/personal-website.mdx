@@ -1,0 +1,34 @@
+---
+title: "Personal Website v1"
+date: "2026-02-23"
+description: "My personal slice of the internet. A place for thoughts, projects, and experiments. Built with Next.js and Tailwind."
+tags: ["Next.js", "React", "TypeScript", "Tailwind CSS", "MDX"]
+link: "https://kadenpriebe.com"
+github: "https://github.com/kadenpriebe/personal-website"
+featured: true
+---
+
+This website is an experiment in digital gardening. Instead of a static portfolio that gathers dust, I wanted a living system where I could easily plant ideas (blog posts), grow projects, and showcase the tools I use to learn.
+
+## The Goal
+
+Make it personal. Make it fast. Make it easy to update.
+
+I wanted a site that felt like *me*—a bit minimalist but with personality. I also wanted to ensure that adding new content didn't require a full redeploy or complex CMS management.
+
+## Technical Choices
+
+- **Next.js (App Router):** For the robust routing and server components.
+- **Tailwind CSS v4:** For rapid styling and a design system that scales.
+- **MDX:** To write content in Markdown but embed interactive React components (like my [PCA Explorer](/coursework/cs-3780-pca)).
+- **Vercel:** for seamless deployment.
+
+## How it works
+
+The site is statically generated. Content lives in a local `content/` directory as MDX files. At build time, Next.js reads these files, parses the frontmatter (metadata), and renders the pages. This gives me the best of both worlds: the speed of a static site and the flexibility of a dynamic app.
+
+## Future Plans
+
+- Adding a `/now` page to share what I'm currently focused on.
+- Building more interactive learning tools for my coursework.
+- Experimenting with 3D elements using Three.js.
