@@ -223,7 +223,7 @@ function setStatus(html = "", cls = "") {
 const fail = (err) => setStatus(esc(err.message), "err");
 
 const ok = (page, what = "Published!") =>
-  setStatus(`${what} GitHub takes about a minute to update the site: <a href="${page}">view it</a>. Still seeing the old version? Hard-refresh with Cmd+Shift+R.`, "ok");
+  setStatus(`${what} You'll see it on your site right away: <a href="${page}">view it</a>. Visitors see it within about a minute.`, "ok");
 
 function drawTabs() {
   const labels = { post: "New post", note: "New draft", read: "New reading", edit: "Edit existing" };
@@ -359,7 +359,7 @@ async function remove() {
     editing = null;
     lists = null;
     render();
-    setStatus("Deleted. The site will update in about a minute.", "ok");
+    setStatus("Deleted. It's gone from your view now; visitors see the change within about a minute.", "ok");
   } catch (err) {
     fail(err);
   }

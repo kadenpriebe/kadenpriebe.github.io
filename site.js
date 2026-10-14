@@ -26,7 +26,24 @@ function fmtDate(iso, opts = { year: "numeric", month: "short", day: "numeric" }
 
 const byDateDesc = (a, b) => (b.date || "").localeCompare(a.date || "");
 
+// In your own browser (token saved), content is read straight from the GitHub repo,
+// so edits show up the moment you save. Visitors read the built site, which GitHub
+// Pages updates about a minute after each change.
+const REPO = "kadenpriebe/kadenpriebe.github.io";
+const ownerToken = () => { try { return localStorage.getItem("gh_token") || ""; } catch { return ""; } };
+
 async function load(path, as = "json") {
+  const token = ownerToken();
+  if (token && path.startsWith("content/")) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=main`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.raw+json" },
+      });
+      if (res.ok) return as === "json" ? res.json() : res.text();
+    } catch {}
+    // Anything goes wrong (offline, token revoked…): fall back to the built site below.
+  }
   const res = await fetch(path, { cache: "no-cache" });
   if (!res.ok) throw new Error(`Couldn't load ${path} (${res.status})`);
   return as === "json" ? res.json() : res.text();
@@ -38,7 +55,7 @@ function md(text) {
 
 // "Write" only appears in browsers that have the GitHub token saved (see write.js),
 // i.e. just on your devices. Visitors never see it.
-const isOwner = () => { try { return !!localStorage.getItem("gh_token"); } catch { return false; } };
+const isOwner = () => !!ownerToken();
 
 function renderChrome(page) {
   const nav = [...NAV, ...(isOwner() || page === "write" ? [{ href: "write.html", label: "Write", page: "write" }] : [])].map(
