@@ -130,21 +130,21 @@ const KINDS = {
   note: {
     fields: (v, editing) =>
       (editing ? dateField(v.date) : "") +
-      field("text", "Note", area("text", v.text, 6, "What's on your mind?")) +
+      field("text", "Draft", area("text", v.text, 6, "What's on your mind?")) +
       linkField(v),
     async create({ text, link }) {
       if (!text.trim()) throw new Error("Write something first.");
-      await updateJSON("content/notes.json", (l) => void l.unshift(setOrDrop({ date: today(), text: text.trim() }, "link", cleanLink(link))), "Note");
+      await updateJSON("content/notes.json", (l) => void l.unshift(setOrDrop({ date: today(), text: text.trim() }, "link", cleanLink(link))), "Draft");
       return "notes.html";
     },
     async save(ref, { date, text, link }) {
-      if (!text.trim()) throw new Error("A note can't be empty. Use Delete instead.");
+      if (!text.trim()) throw new Error("A draft can't be empty. Use Delete instead.");
       const next = setOrDrop({ ...ref.original, date: date || ref.original.date, text: text.trim() }, "link", cleanLink(link));
-      await changeItem("content/notes.json", ref.index, ref.original, next, "Edit note");
+      await changeItem("content/notes.json", ref.index, ref.original, next, "Edit draft");
       ref.original = next;
       return "notes.html";
     },
-    remove: (ref) => changeItem("content/notes.json", ref.index, ref.original, null, "Delete note"),
+    remove: (ref) => changeItem("content/notes.json", ref.index, ref.original, null, "Delete draft"),
   },
 
   read: {
@@ -226,7 +226,7 @@ const ok = (page, what = "Published!") =>
   setStatus(`${what} GitHub takes about a minute to update the site: <a href="${page}">view it</a>. Still seeing the old version? Hard-refresh with Cmd+Shift+R.`, "ok");
 
 function drawTabs() {
-  const labels = { post: "New post", note: "New note", read: "New reading", edit: "Edit existing" };
+  const labels = { post: "New post", note: "New draft", read: "New reading", edit: "Edit existing" };
   $("#tabs").innerHTML = Object.entries(labels)
     .map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === tab}">${l}</button>`)
     .join("");
@@ -235,7 +235,7 @@ function drawTabs() {
 function drawForm() {
   const kind = editing ? editing.kind : tab;
   const values = editing ? editing.values : {};
-  const heading = editing ? { post: "Edit post", note: "Edit note", read: "Edit reading entry", about: "Edit About page", site: "Edit site info" }[kind] : "";
+  const heading = editing ? { post: "Edit post", note: "Edit draft", read: "Edit reading entry", about: "Edit About page", site: "Edit site info" }[kind] : "";
   const canDelete = editing && KINDS[kind].remove;
   $("#content").innerHTML = `
     ${editing ? `<p><button type="button" class="link" id="back">← Back to the list</button></p><h2 class="form-h">${heading}</h2>` : ""}
@@ -280,7 +280,7 @@ function drawList() {
     <ul class="rows">${indexed(lists.posts).map(([i, p]) => item(`data-edit="post" data-i="${i}"`, p.title, p.date)).join("") || `<li class="empty">None yet.</li>`}</ul>
     <h2>Reading</h2>
     <ul class="rows">${indexed(lists.reading).map(([i, b]) => item(`data-edit="read" data-i="${i}"`, b.title, b.date)).join("") || `<li class="empty">None yet.</li>`}</ul>
-    <h2>Notes</h2>
+    <h2>Drafts</h2>
     <ul class="rows">${indexed(lists.notes).map(([i, n]) => item(`data-edit="note" data-i="${i}"`, snippet(n.text), n.date)).join("") || `<li class="empty">None yet.</li>`}</ul>`;
 }
 

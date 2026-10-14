@@ -9,7 +9,7 @@ const SITE = {
 const NAV = [
   { href: "writing.html", label: "Writing", page: "writing" },
   { href: "reading.html", label: "Reading", page: "reading" },
-  { href: "notes.html", label: "Notes", page: "notes" },
+  { href: "notes.html", label: "Drafts", page: "notes" },
   { href: "about.html", label: "About", page: "about" },
 ];
 
@@ -152,7 +152,7 @@ const pages = {
       </section>
 
       <section>
-        <h2><a href="notes.html">Lately</a></h2>
+        <h2><a href="notes.html">Drafts</a></h2>
         ${notes.length ? `<ul class="notes">${notes.slice(0, 3).map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
       </section>`;
   },
@@ -212,8 +212,8 @@ const pages = {
   async notes(main) {
     const notes = (await load("content/notes.json")).sort(byDateDesc);
     main.innerHTML = `
-      <h1>Notes</h1>
-      <p class="lede">Short thoughts, quotes, half-ideas. Less polished than the writing.</p>
+      <h1>Drafts</h1>
+      <p class="lede">Rough thoughts, half-formed ideas, and things I'm still working out.</p>
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 

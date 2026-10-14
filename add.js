@@ -2,7 +2,7 @@
 // Quick way to add things to the site.
 //
 //   node add.js post "My post title"                  → makes content/posts/my-post-title.md
-//   node add.js note "A short thought"                → adds to content/notes.json
+//   node add.js note "A rough thought"                → adds a draft to content/notes.json
 //   node add.js read "Title" "Author" [status] [type] → adds to content/reading.json
 //                    status: reading | finished | want   (default: reading)
 //                    type:   book | article | ...        (default: book)
@@ -35,7 +35,7 @@ if (kind === "post" && args[0]) {
   const notes = readJSON("notes.json");
   notes.unshift({ date: today, text: args[0] });
   writeJSON("notes.json", notes);
-  console.log("Note added.");
+  console.log("Draft added.");
 } else if (kind === "read" && args[0]) {
   const [title, author, status = "reading", type = "book"] = args;
   const items = readJSON("reading.json");
