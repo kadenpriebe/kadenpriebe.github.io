@@ -6,12 +6,5 @@
     "type": "book",
     "status": "finished",
     "link": "https://bioacc.life/"
-  },
-  {
-    "title": "Example: something on your list",
-    "author": "Author Name",
-    "type": "book",
-    "status": "want",
-    "date": "2026-09-20"
   }
 ]
