@@ -1,4 +1,4 @@
-// Name, intro and footer links live in content/site.json (editable from /write.html).
+// Name, intro and footer links live in content/site.json (editable on the homepage when signed in).
 // These are only the fallback if that file can't be loaded.
 const SITE = {
   name: "Kaden Priebe",
@@ -31,9 +31,27 @@ const byDateDesc = (a, b) => (b.date || "").localeCompare(a.date || "");
 // Pages updates about a minute after each change.
 const REPO = "kadenpriebe/kadenpriebe.github.io";
 const ownerToken = () => { try { return localStorage.getItem("gh_token") || ""; } catch { return ""; } };
+// You're the owner in any browser where your GitHub token is saved. Only then do the
+// edit buttons, the + button and owner.js's editing tools appear.
+const OWNER = !!ownerToken();
+
+// Right after you save, owner.js remembers what it wrote for a couple of minutes, so the
+// page shows your change instantly even if GitHub is a second behind.
+function freshCopy(path) {
+  try {
+    const e = JSON.parse(sessionStorage.getItem("owner_fresh") || "{}")[path];
+    if (e && Date.now() - e.t < 120000) return e;
+  } catch {}
+  return null;
+}
 
 async function load(path, as = "json") {
   const token = ownerToken();
+  const fresh = token && freshCopy(path);
+  if (fresh) {
+    if (fresh.text === null) throw new Error(`Couldn't load ${path} (404)`);
+    return as === "json" ? JSON.parse(fresh.text) : fresh.text;
+  }
   if (token && path.startsWith("content/")) {
     try {
       const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=main`, {
@@ -53,12 +71,19 @@ function md(text) {
   return window.marked ? marked.parse(text) : `<pre>${esc(text)}</pre>`;
 }
 
-// "Write" only appears in browsers that have the GitHub token saved (see write.js),
-// i.e. just on your devices. Visitors never see it.
-const isOwner = () => !!ownerToken();
+// Edit / Delete buttons, only rendered for the owner. owner.js handles the clicks.
+const ownerCtl = (attrs, { del = true, label = "Edit" } = {}) =>
+  OWNER
+    ? `<div class="owner-ctl"><button type="button" data-act="edit" ${attrs}>${label}</button>${
+        del ? `<button type="button" data-act="delete" ${attrs}>Delete</button>` : ""
+      }</div>`
+    : "";
+
+// Keeps each item's position in its file, so owner.js knows which entry you're editing.
+const indexed = (arr) => arr.map((x, i) => ({ ...x, _i: i }));
 
 function renderChrome(page) {
-  const nav = [...NAV, ...(isOwner() || page === "write" ? [{ href: "write.html", label: "Write", page: "write" }] : [])].map(
+  const nav = NAV.map(
     (n) => `<a href="${n.href}"${n.page === page ? ' aria-current="page"' : ""}>${n.label}</a>`
   ).join("");
   document.querySelector("header").innerHTML = `
@@ -71,7 +96,7 @@ function renderChrome(page) {
   const links = SITE.links.map((l) => `<a href="${esc(l.url)}">${esc(l.label)}</a>`).join(" · ");
   document.querySelector("footer").innerHTML = `
     <span>© ${new Date().getFullYear()} ${esc(SITE.name)}</span>
-    <span>${links}</span>`;
+    <span>${links}${OWNER ? `${links ? " · " : ""}<button type="button" class="link" data-act="signout">Sign out</button>` : ""}</span>`;
 }
 
 // ─── Light / dark toggle ─────────────────────────────────────────────
@@ -120,7 +145,7 @@ function extLink(url) {
 }
 
 const bookItem = (b) => `
-  <li class="book">
+  <li class="book" data-i="${b._i}">
     <div class="book-head">
       <span class="book-title">${b.link ? `<a href="${esc(b.link)}">${esc(b.title)}</a>` : esc(b.title)}</span>
       ${b.status ? `<span class="tag tag-${esc(b.status)}">${STATUS_LABELS[b.status] || esc(b.status)}</span>` : ""}
@@ -128,27 +153,30 @@ const bookItem = (b) => `
     <div class="meta">${[b.author, b.type, b.date && fmtDate(b.date, { year: "numeric", month: "short" })]
       .filter(Boolean).map(esc).join(" · ")}</div>
     ${b.note ? `<div class="note-body">${md(b.note)}</div>` : ""}
+    ${ownerCtl(`data-kind="read" data-i="${b._i}"`)}
   </li>`;
 
 const noteItem = (n) => `
-  <li class="note">
+  <li class="note" data-i="${n._i}">
     <time>${fmtDate(n.date)}</time>
     <div class="note-body">${md(n.text)}</div>
     ${extLink(n.link)}
+    ${ownerCtl(`data-kind="note" data-i="${n._i}"`)}
   </li>`;
 
 // ─── Pages ───────────────────────────────────────────────────────────
 
 const pages = {
   async home(main) {
-    const [posts, reading, notes] = await Promise.all([
+    const [allPosts, allReading, allNotes] = await Promise.all([
       load("content/posts.json"),
       load("content/reading.json"),
       load("content/notes.json"),
     ]);
-    posts.sort(byDateDesc);
-    reading.sort(byDateDesc);
-    notes.sort(byDateDesc);
+    window.SITE_DATA = { posts: allPosts, reading: allReading, notes: allNotes };
+    const posts = [...allPosts].sort(byDateDesc);
+    const reading = indexed(allReading).sort(byDateDesc);
+    const notes = indexed(allNotes).sort(byDateDesc);
     const current = reading.filter((b) => b.status === "reading");
     const recent = (current.length ? current : reading).slice(0, 3);
 
@@ -156,6 +184,7 @@ const pages = {
       <section class="hero">
         <h1>${esc(SITE.name)}</h1>
         <p class="lede">${esc(SITE.intro)}</p>
+        ${ownerCtl(`data-kind="site"`, { del: false, label: "Edit name & intro" })}
       </section>
 
       <section>
@@ -175,7 +204,9 @@ const pages = {
   },
 
   async writing(main) {
-    const posts = (await load("content/posts.json")).sort(byDateDesc);
+    const all = await load("content/posts.json");
+    window.SITE_DATA = { posts: all };
+    const posts = [...all].sort(byDateDesc);
     const years = {};
     for (const p of posts) (years[p.date.slice(0, 4)] ||= []).push(p);
     main.innerHTML = `
@@ -196,6 +227,7 @@ const pages = {
       return;
     }
     const body = await load(`content/posts/${encodeURIComponent(slug)}.md`, "text");
+    window.SITE_DATA = { posts, post, body };
     document.title = `${post.title} — ${SITE.name}`;
     main.innerHTML = `
       <article>
@@ -203,6 +235,7 @@ const pages = {
           <h1>${esc(post.title)}</h1>
           <time>${fmtDate(post.date, { year: "numeric", month: "long", day: "numeric" })}</time>
           ${extLink(post.link)}
+          ${ownerCtl(`data-kind="post" data-slug="${esc(post.slug)}"`)}
         </header>
         <div class="prose">${md(body)}</div>
       </article>
@@ -210,7 +243,9 @@ const pages = {
   },
 
   async reading(main) {
-    const items = (await load("content/reading.json")).sort(byDateDesc);
+    const all = await load("content/reading.json");
+    window.SITE_DATA = { reading: all };
+    const items = indexed(all).sort(byDateDesc);
     const filters = ["all", "reading", "finished", "want"];
     const draw = (f) => {
       const shown = f === "all" ? items : items.filter((b) => b.status === f);
@@ -227,30 +262,33 @@ const pages = {
   },
 
   async notes(main) {
-    const notes = (await load("content/notes.json")).sort(byDateDesc);
+    const all = await load("content/notes.json");
+    window.SITE_DATA = { notes: all };
+    const notes = indexed(all).sort(byDateDesc);
     main.innerHTML = `
       <h1>Drafts</h1>
       <p class="lede">Rough thoughts, half-formed ideas, and things I'm still working out.</p>
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 
-  async write() {}, // filled in by write.js
-
   async about(main) {
     const body = await load("content/about.md", "text");
-    main.innerHTML = `<article class="prose">${md(body)}</article>`;
+    window.SITE_DATA = { about: body };
+    main.innerHTML = `${ownerCtl(`data-kind="about"`, { del: false, label: "Edit page" })}<article class="prose">${md(body)}</article>`;
   },
 };
 
 // ─── Boot ────────────────────────────────────────────────────────────
 
-(async () => {
+// owner.js calls window.siteRender() after each save to redraw the page with your change.
+window.siteRender = async () => {
   const page = document.body.dataset.page;
   try { Object.assign(SITE, await load("content/site.json")); } catch {}
   renderChrome(page);
   const main = document.querySelector("main");
   try {
     await pages[page](main);
+    document.dispatchEvent(new CustomEvent("site:rendered", { detail: { page } }));
   } catch (err) {
     const fileHint =
       location.protocol === "file:"
@@ -261,4 +299,5 @@ const pages = {
     main.innerHTML = `<h1>Something went wrong</h1>${fileHint}`;
     console.error(err);
   }
-})();
+};
+window.siteRender();
