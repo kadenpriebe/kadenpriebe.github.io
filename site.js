@@ -225,7 +225,7 @@ const pages = {
     const fileHint =
       location.protocol === "file:"
         ? `<p>It looks like you opened the file directly. Browsers block that, so start a local server instead:</p>
-           <pre>cd ~/my-site && python3 -m http.server 8000</pre>
+           <pre>cd ~/kadenpriebe.github.io && python3 -m http.server 8000</pre>
            <p>then visit <a href="http://localhost:8000">localhost:8000</a>.</p>`
         : `<p>${esc(err.message)}</p>`;
     main.innerHTML = `<h1>Something went wrong</h1>${fileHint}`;

@@ -1,11 +1,11 @@
-# my-site
+# kadenpriebe.github.io
 
 A personal site for writing, reading notes, and short thoughts. Plain HTML/CSS/JS with no build step.
 
 ## See it locally
 
 ```sh
-cd ~/my-site
+cd ~/kadenpriebe.github.io
 python3 -m http.server 8000
 ```
 
