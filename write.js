@@ -2,16 +2,20 @@
 // lives only in this browser (localStorage). Visitors can open this page
 // but can't publish anything without the token.
 
+(() => {
 const REPO = "kadenpriebe/kadenpriebe.github.io";
 const BRANCH = "main";
 const API = `https://api.github.com/repos/${REPO}/contents/`;
 
 const $ = (s) => document.querySelector(s);
 const today = () => new Date().toLocaleDateString("en-CA");
-const slugify = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const slugify = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const getToken = () => { try { return localStorage.getItem("gh_token") || ""; } catch { return ""; } };
 const setToken = (t) => { try { t ? localStorage.setItem("gh_token", t) : localStorage.removeItem("gh_token"); } catch {} };
+
+// ─── GitHub API ──────────────────────────────────────────────────────
 
 const enc = (text) => {
   let bin = "";
@@ -47,66 +51,251 @@ async function readFile(path) {
 const writeFile = (path, text, message, sha) =>
   gh(path, { method: "PUT", body: JSON.stringify({ message, content: enc(text), branch: BRANCH, ...(sha ? { sha } : {}) }) });
 
-async function updateList(path, mutate, message) {
+const deleteFile = (path, sha, message) =>
+  gh(path, { method: "DELETE", body: JSON.stringify({ message, sha, branch: BRANCH }) });
+
+async function readJSON(path) {
   const f = await readFile(path);
   if (!f) throw new Error(`Couldn't find ${path} in the repo.`);
-  const list = JSON.parse(f.text);
-  mutate(list);
-  await writeFile(path, JSON.stringify(list, null, 2) + "\n", message, f.sha);
+  return { sha: f.sha, data: JSON.parse(f.text) };
 }
 
-// ─── Publish actions ─────────────────────────────────────────────────
+async function updateJSON(path, mutate, message) {
+  const { sha, data } = await readJSON(path);
+  const next = mutate(data) ?? data;
+  await writeFile(path, JSON.stringify(next, null, 2) + "\n", message, sha);
+}
 
-const publishers = {
-  async post({ title, body }) {
-    const slug = slugify(title);
-    if (!slug) throw new Error("Give the post a title.");
-    if (!body.trim()) throw new Error("Write something first.");
-    const existing = await readFile("content/posts.json");
-    if (JSON.parse(existing.text).some((p) => p.slug === slug)) throw new Error(`You already have a post called “${slug}”.`);
-    await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
-    await updateList("content/posts.json", (l) => l.unshift({ slug, title, date: today() }), `Post: ${title}`);
-    return `post.html?p=${slug}`;
-  },
-  async note({ text }) {
-    if (!text.trim()) throw new Error("Write something first.");
-    await updateList("content/notes.json", (l) => l.unshift({ date: today(), text: text.trim() }), "Note");
-    return "notes.html";
-  },
-  async read({ title, author, status, type, link, note }) {
-    if (!title.trim()) throw new Error("Give it a title.");
-    const item = { title: title.trim(), author: author.trim(), type: type.trim() || "book", status, date: today() };
-    if (link.trim()) item.link = link.trim();
-    if (note.trim()) item.note = note.trim();
-    await updateList("content/reading.json", (l) => l.unshift(item), `Reading: ${item.title}`);
-    return "reading.html";
-  },
-};
+// Notes and reading entries have no ids, so we find them by position and check
+// that the entry is still what you opened before changing it.
+const CHANGED = "This changed since you opened it. Go back to the list and reopen it.";
+function changeItem(path, index, original, replacement, message) {
+  return updateJSON(path, (list) => {
+    if (JSON.stringify(list[index]) !== JSON.stringify(original)) throw new Error(CHANGED);
+    if (replacement === null) list.splice(index, 1);
+    else list[index] = replacement;
+  }, message);
+}
 
-// ─── UI ──────────────────────────────────────────────────────────────
+// ─── Form definitions ────────────────────────────────────────────────
+// Each kind describes its fields and how to create / save / delete.
 
 const field = (id, label, input) => `<label for="${id}">${label}</label>${input}`;
+const input = (id, v = "", extra = "") => `<input id="${id}" value="${esc(v)}" autocomplete="off" ${extra}>`;
+const area = (id, v = "", rows = 8, ph = "") => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}">${esc(v)}</textarea>`;
+const dateField = (v) => field("date", "Date", input("date", v, 'type="date"'));
 
-const forms = {
-  post: () =>
-    field("title", "Title", `<input id="title" autocomplete="off">`) +
-    field("body", "Write (markdown works)", `<textarea id="body" rows="16" placeholder="Start writing…"></textarea>`),
-  note: () => field("text", "Note", `<textarea id="text" rows="6" placeholder="What's on your mind?"></textarea>`),
-  read: () =>
-    field("title", "Title", `<input id="title" autocomplete="off">`) +
-    field("author", "Author", `<input id="author" autocomplete="off">`) +
-    `<div class="two">${field("status", "Status", `<select id="status"><option value="reading">Reading now</option><option value="finished">Finished</option><option value="want">Want to read</option></select>`)}
-     ${field("type", "Type", `<input id="type" value="book">`)}</div>` +
-    field("link", "Link (optional)", `<input id="link" type="url" placeholder="https://">`) +
-    field("note", "Your thoughts (optional)", `<textarea id="note" rows="6"></textarea>`),
+const KINDS = {
+  post: {
+    fields: (v, editing) =>
+      field("title", "Title", input("title", v.title)) +
+      (editing ? dateField(v.date) : "") +
+      field("body", "Write (markdown works)", area("body", v.body, 16, "Start writing…")),
+    async create({ title, body }) {
+      const slug = slugify(title);
+      if (!slug) throw new Error("Give the post a title.");
+      if (!body.trim()) throw new Error("Write something first.");
+      const { data } = await readJSON("content/posts.json");
+      if (data.some((p) => p.slug === slug)) throw new Error(`You already have a post called “${slug}”.`);
+      await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
+      await updateJSON("content/posts.json", (l) => void l.unshift({ slug, title, date: today() }), `Post: ${title}`);
+      return `post.html?p=${slug}`;
+    },
+    async save(ref, { title, date, body }) {
+      if (!title.trim()) throw new Error("Give the post a title.");
+      const path = `content/posts/${ref.slug}.md`;
+      const existing = await readFile(path);
+      await writeFile(path, body.trim() + "\n", `Edit post: ${title}`, existing?.sha);
+      await updateJSON("content/posts.json", (l) => {
+        const p = l.find((x) => x.slug === ref.slug);
+        if (!p) throw new Error(CHANGED);
+        p.title = title.trim();
+        p.date = date || p.date;
+      }, `Edit post: ${title}`);
+      return `post.html?p=${ref.slug}`;
+    },
+    async remove(ref) {
+      await updateJSON("content/posts.json", (l) => l.filter((p) => p.slug !== ref.slug), `Delete post: ${ref.slug}`);
+      const f = await readFile(`content/posts/${ref.slug}.md`);
+      if (f) await deleteFile(`content/posts/${ref.slug}.md`, f.sha, `Delete post: ${ref.slug}`);
+    },
+  },
+
+  note: {
+    fields: (v, editing) => (editing ? dateField(v.date) : "") + field("text", "Note", area("text", v.text, 6, "What's on your mind?")),
+    async create({ text }) {
+      if (!text.trim()) throw new Error("Write something first.");
+      await updateJSON("content/notes.json", (l) => void l.unshift({ date: today(), text: text.trim() }), "Note");
+      return "notes.html";
+    },
+    async save(ref, { date, text }) {
+      if (!text.trim()) throw new Error("A note can't be empty. Use Delete instead.");
+      const next = { ...ref.original, date: date || ref.original.date, text: text.trim() };
+      await changeItem("content/notes.json", ref.index, ref.original, next, "Edit note");
+      ref.original = next;
+      return "notes.html";
+    },
+    remove: (ref) => changeItem("content/notes.json", ref.index, ref.original, null, "Delete note"),
+  },
+
+  read: {
+    fields: (v, editing) => {
+      const sel = (s) => (v.status === s ? " selected" : "");
+      return (
+        field("title", "Title", input("title", v.title)) +
+        field("author", "Author", input("author", v.author)) +
+        `<div class="two">${field("status", "Status", `<select id="status"><option value="reading"${sel("reading")}>Reading now</option><option value="finished"${sel("finished")}>Finished</option><option value="want"${sel("want")}>Want to read</option></select>`)}
+         ${field("type", "Type", input("type", v.type ?? "book"))}</div>` +
+        (editing ? dateField(v.date) : "") +
+        field("link", "Link (optional)", input("link", v.link, 'type="url" placeholder="https://"')) +
+        field("note", "Your thoughts (optional)", area("note", v.note, 6))
+      );
+    },
+    build(base, f) {
+      if (!f.title.trim()) throw new Error("Give it a title.");
+      const item = { ...base, title: f.title.trim(), author: f.author.trim(), type: f.type.trim() || "book", status: f.status };
+      for (const k of ["link", "note"]) f[k].trim() ? (item[k] = f[k].trim()) : delete item[k];
+      return item;
+    },
+    async create(f) {
+      const item = this.build({ date: today() }, f);
+      await updateJSON("content/reading.json", (l) => void l.unshift(item), `Reading: ${item.title}`);
+      return "reading.html";
+    },
+    async save(ref, f) {
+      const next = this.build({ ...ref.original, ...(f.date ? { date: f.date } : {}) }, f);
+      await changeItem("content/reading.json", ref.index, ref.original, next, `Edit reading: ${next.title}`);
+      ref.original = next;
+      return "reading.html";
+    },
+    remove: (ref) => changeItem("content/reading.json", ref.index, ref.original, null, "Delete reading entry"),
+  },
+
+  about: {
+    fields: (v) => field("body", "About page (markdown works)", area("body", v.body, 18)),
+    async save(_, { body }) {
+      const f = await readFile("content/about.md");
+      await writeFile("content/about.md", body.trim() + "\n", "Edit About page", f?.sha);
+      return "about.html";
+    },
+  },
+
+  site: {
+    fields: (v) =>
+      field("name", "Your name (header and footer)", input("name", v.name)) +
+      field("intro", "Homepage intro", area("intro", v.intro, 4)) +
+      field("links", "Footer links, one per line as Label | URL", area("links", v.links, 4, "GitHub | https://github.com/you")),
+    async save(_, { name, intro, links }) {
+      if (!name.trim()) throw new Error("Your name can't be empty.");
+      const parsed = links.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+        const i = l.indexOf("|");
+        const label = l.slice(0, i).trim(), url = l.slice(i + 1).trim();
+        if (i < 0 || !label || !url) throw new Error(`Each link needs the form “Label | https://…”. Check: ${l}`);
+        return { label, url };
+      });
+      await updateJSON("content/site.json", () => ({ name: name.trim(), intro: intro.trim(), links: parsed }), "Edit site info");
+      return "index.html";
+    },
+  },
 };
 
-let kind = "post";
+// ─── UI state ────────────────────────────────────────────────────────
+
+let tab = "post"; // post | note | read | edit
+let editing = null; // { kind, ref, values } while a form for an existing item is open
+let lists = null; // cached content for the Edit list
+
+function setStatus(html = "", cls = "") {
+  const el = $("#flash");
+  el.className = cls;
+  el.innerHTML = html;
+}
+const fail = (err) => setStatus(esc(err.message), "err");
+
+const ok = (page, what = "Published!") =>
+  setStatus(`${what} It'll be live in about a minute: <a href="${page}">view it</a>`, "ok");
 
 function drawTabs() {
-  document.querySelectorAll(".filters button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === kind));
-  $("#fields").innerHTML = forms[kind]();
-  $("#msg").textContent = "";
+  const labels = { post: "New post", note: "New note", read: "New reading", edit: "Edit existing" };
+  $("#tabs").innerHTML = Object.entries(labels)
+    .map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === tab}">${l}</button>`)
+    .join("");
+}
+
+function drawForm() {
+  const kind = editing ? editing.kind : tab;
+  const values = editing ? editing.values : {};
+  const heading = editing ? { post: "Edit post", note: "Edit note", read: "Edit reading entry", about: "Edit About page", site: "Edit site info" }[kind] : "";
+  const canDelete = editing && KINDS[kind].remove;
+  $("#content").innerHTML = `
+    ${editing ? `<p><button type="button" class="link" id="back">← Back to the list</button></p><h2 class="form-h">${heading}</h2>` : ""}
+    <form id="form" autocomplete="off">
+      <div id="fields">${KINDS[kind].fields(values, !!editing)}</div>
+      <div class="actions">
+        <button id="publish" type="submit">${editing ? "Save changes" : "Publish"}</button>
+        ${canDelete ? `<button id="delete" type="button" class="danger">Delete</button>` : ""}
+      </div>
+    </form>`;
+  $("#publish").disabled = !getToken();
+}
+
+async function loadLists() {
+  const [posts, reading, notes] = await Promise.all(
+    ["posts", "reading", "notes"].map((n) => readJSON(`content/${n}.json`).then((r) => r.data))
+  );
+  lists = { posts, reading, notes };
+}
+
+function drawList() {
+  if (!getToken()) {
+    $("#content").innerHTML = `<p class="empty">Paste your GitHub token below first, then this list will load.</p>`;
+    return;
+  }
+  if (!lists) {
+    $("#content").innerHTML = `<p class="empty">Loading…</p>`;
+    loadLists().then(drawList, (e) => { $("#content").innerHTML = ""; fail(e); });
+    return;
+  }
+  const item = (attrs, label, meta) => `<li class="row"><a href="#" ${attrs}>${esc(label)}</a><time>${esc(meta)}</time></li>`;
+  const byDate = (a, b) => (b[1].date || "").localeCompare(a[1].date || "");
+  const indexed = (arr) => arr.map((x, i) => [i, x]).sort(byDate);
+  const snippet = (t) => (t.length > 70 ? t.slice(0, 70).trimEnd() + "…" : t);
+  $("#content").innerHTML = `
+    <h2>Pages</h2>
+    <ul class="rows">
+      ${item('data-edit="about"', "About page", "")}
+      ${item('data-edit="site"', "Name, homepage intro & footer links", "")}
+    </ul>
+    <h2>Posts</h2>
+    <ul class="rows">${indexed(lists.posts).map(([i, p]) => item(`data-edit="post" data-i="${i}"`, p.title, p.date)).join("") || `<li class="empty">None yet.</li>`}</ul>
+    <h2>Reading</h2>
+    <ul class="rows">${indexed(lists.reading).map(([i, b]) => item(`data-edit="read" data-i="${i}"`, b.title, b.date)).join("") || `<li class="empty">None yet.</li>`}</ul>
+    <h2>Notes</h2>
+    <ul class="rows">${indexed(lists.notes).map(([i, n]) => item(`data-edit="note" data-i="${i}"`, snippet(n.text), n.date)).join("") || `<li class="empty">None yet.</li>`}</ul>`;
+}
+
+async function openEditor(kind, i) {
+  setStatus("Opening…");
+  try {
+    if (kind === "post") {
+      const p = lists.posts[i];
+      const f = await readFile(`content/posts/${p.slug}.md`);
+      editing = { kind, ref: { slug: p.slug }, values: { ...p, body: f ? f.text : "" } };
+    } else if (kind === "note" || kind === "read") {
+      const original = lists[kind === "note" ? "notes" : "reading"][i];
+      editing = { kind, ref: { index: +i, original }, values: original };
+    } else if (kind === "about") {
+      const f = await readFile("content/about.md");
+      editing = { kind, ref: {}, values: { body: f ? f.text : "" } };
+    } else {
+      const { data } = await readJSON("content/site.json");
+      editing = { kind, ref: {}, values: { ...data, links: (data.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") } };
+    }
+    setStatus();
+    drawForm();
+  } catch (err) {
+    fail(err);
+  }
 }
 
 function drawToken() {
@@ -115,49 +304,94 @@ function drawToken() {
     ? `<p class="meta">Signed in on this browser. <button type="button" class="link" id="forget">Remove token</button></p>`
     : `<p>To publish from the browser, paste a GitHub token once. It's saved only in this browser. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Create one</a> for the repo <code>${REPO}</code> with <b>Contents: Read and write</b>.</p>
        <div class="token-row"><input id="token" type="password" placeholder="github_pat_…" autocomplete="off"><button type="button" id="save-token">Save</button></div>`;
-  $("#publish").disabled = !has;
-  $("#forget")?.addEventListener("click", () => { setToken(""); drawToken(); });
-  $("#save-token")?.addEventListener("click", () => {
-    const t = $("#token").value.trim();
-    if (!t) return;
-    setToken(t);
-    drawToken();
-  });
+  if ($("#publish")) $("#publish").disabled = !has;
+}
+
+function render() {
+  drawTabs();
+  if (tab === "edit" && !editing) drawList();
+  else drawForm();
+}
+
+function collect() {
+  return Object.fromEntries([...document.querySelectorAll("#fields [id]")].map((el) => [el.id, el.value]));
+}
+
+async function submit() {
+  const btn = $("#publish");
+  btn.disabled = true;
+  setStatus("Working…");
+  try {
+    const kind = editing ? editing.kind : tab;
+    if (editing) {
+      const page = await KINDS[kind].save(editing.ref, collect());
+      lists = null;
+      ok(page, "Saved!");
+    } else {
+      const page = await KINDS[kind].create(collect());
+      lists = null;
+      render();
+      ok(page);
+    }
+  } catch (err) {
+    if (err.message === CHANGED) lists = null; // reload the list next time so it isn't stale
+    fail(err);
+  } finally {
+    if ($("#publish")) $("#publish").disabled = !getToken();
+  }
+}
+
+async function remove() {
+  if (!confirm("Delete this permanently from your site?")) return;
+  setStatus("Deleting…");
+  try {
+    await KINDS[editing.kind].remove(editing.ref);
+    editing = null;
+    lists = null;
+    render();
+    setStatus("Deleted. The site will update in about a minute.", "ok");
+  } catch (err) {
+    fail(err);
+  }
 }
 
 function mount() {
   $("main").innerHTML = `
     <h1>Write</h1>
-    <div class="filters" id="tabs">
-      <button data-k="post">Post</button><button data-k="note">Note</button><button data-k="read">Reading</button>
-    </div>
-    <form id="form" autocomplete="off">
-      <div id="fields"></div>
-      <div class="actions"><button id="publish" type="submit">Publish</button><span id="msg" role="status"></span></div>
-    </form>
+    <div class="filters" id="tabs"></div>
+    <div id="flash" role="status"></div>
+    <div id="content"></div>
     <div id="token-box"></div>`;
-  $("#tabs").addEventListener("click", (e) => { if (e.target.dataset.k) { kind = e.target.dataset.k; drawTabs(); } });
-  $("#form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries([...document.querySelectorAll("#fields [id]")].map((el) => [el.id, el.value]));
-    const btn = $("#publish"), msg = $("#msg");
-    btn.disabled = true;
-    msg.className = "";
-    msg.textContent = "Publishing…";
-    try {
-      const page = await publishers[kind](data);
-      drawTabs();
-      msg.className = "ok";
-      msg.innerHTML = `Published! It'll be live in about a minute: <a href="${page}">view it</a>`;
-    } catch (err) {
-      msg.className = "err";
-      msg.textContent = err.message;
-    } finally {
-      btn.disabled = !getToken();
+
+  $("#tabs").addEventListener("click", (e) => {
+    if (!e.target.dataset.k) return;
+    tab = e.target.dataset.k;
+    editing = null;
+    setStatus();
+    render();
+  });
+
+  $("#content").addEventListener("click", (e) => {
+    if (e.target.id === "back") { editing = null; setStatus(); render(); }
+    else if (e.target.id === "delete") remove();
+    else if (e.target.dataset.edit) { e.preventDefault(); openEditor(e.target.dataset.edit, e.target.dataset.i); }
+  });
+  $("#content").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+
+  $("#token-box").addEventListener("click", (e) => {
+    if (e.target.id === "forget") { setToken(""); lists = null; drawToken(); render(); }
+    if (e.target.id === "save-token") {
+      const t = $("#token").value.trim();
+      if (!t) return;
+      setToken(t);
+      drawToken();
+      render();
     }
   });
-  drawTabs();
+
+  render();
   drawToken();
 }
 
 mount();
+})();

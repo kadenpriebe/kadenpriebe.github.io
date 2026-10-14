@@ -227,3 +227,17 @@ textarea { resize: vertical; line-height: 1.55; }
 .token-row { display: flex; gap: 8px; }
 .token-row input { font-size: 15px; }
 button.link { background: none; border: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+.form-h { margin-top: 8px; }
+#flash { min-height: 1.6em; margin: 12px 0 0; font-size: 16px; color: var(--muted); }
+#flash.ok { color: var(--accent); }
+#flash.err { color: #c0392b; }
+button.danger {
+  font: 15px/1 var(--mono);
+  padding: 12px 22px;
+  border: 1px solid #c0392b;
+  border-radius: 99px;
+  background: transparent;
+  color: #c0392b;
+  cursor: pointer;
+}
+button.danger:hover { background: #c0392b; color: #fff; }

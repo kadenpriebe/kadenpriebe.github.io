@@ -1,14 +1,10 @@
-// ─── Edit these to make the site yours ───────────────────────────────
+// Name, intro and footer links live in content/site.json (editable from /write.html).
+// These are only the fallback if that file can't be loaded.
 const SITE = {
   name: "Kaden Priebe",
-  intro:
-    "Hi, I'm Kaden. This is my little corner of the internet — things I write, things I read, and whatever else is on my mind.",
-  links: [
-    { label: "GitHub", url: "https://github.com/kadenpriebe" },
-    // { label: "Email", url: "mailto:you@example.com" },
-  ],
+  intro: "",
+  links: [],
 };
-// ─────────────────────────────────────────────────────────────────────
 
 const NAV = [
   { href: "writing.html", label: "Writing", page: "writing" },
@@ -223,6 +219,7 @@ const pages = {
 
 (async () => {
   const page = document.body.dataset.page;
+  try { Object.assign(SITE, await load("content/site.json")); } catch {}
   renderChrome(page);
   const main = document.querySelector("main");
   try {
