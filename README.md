@@ -26,8 +26,14 @@ You can also edit the JSON files in `content/` directly. Posts, notes, and readi
 
 Reading `status` can be `reading`, `finished`, or `want`.
 
-## Putting it online (free)
+## Publishing
 
-**GitHub Pages:** create a repo, push this folder, then go to Settings → Pages and pick the `main` branch.
+The site is live at https://kadenpriebe.github.io/my-site/ (GitHub Pages, from the `main` branch).
 
-**Netlify Drop:** drag this folder onto https://app.netlify.com/drop.
+After adding or editing anything, publish it with:
+
+```sh
+git add -A && git commit -m "new post" && git push
+```
+
+It updates online in about a minute.
