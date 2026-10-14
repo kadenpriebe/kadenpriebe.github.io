@@ -201,7 +201,9 @@
         label("Your name", input("name", v.name)) +
         label("Homepage intro", area("intro", v.intro, 3)) +
         label("Footer links, one per line as Label | URL", area("links", v.links, 3, "GitHub | https://github.com/you")),
-      async save(_, { name, intro, links }) {
+      // Only fields you changed are written, so a page opened before someone else's
+      // edit doesn't put the old values back.
+      async save({ original }, { name, intro, links }) {
         if (!name.trim()) throw new Error("Your name can't be empty.");
         const parsed = links.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
           const i = l.indexOf("|");
@@ -209,7 +211,12 @@
           if (i < 0 || !lbl || !url) throw new Error(`Each link needs the form “Label | https://…”. Check: ${l}`);
           return { label: lbl, url: cleanLink(url) };
         });
-        await updateJSON("content/site.json", () => ({ name: name.trim(), intro: intro.trim(), links: parsed }), "Edit name & intro");
+        const changed = (v, was) => v.replace(/\r\n?/g, "\n") !== was;
+        await updateJSON("content/site.json", (cur) => ({
+          name: changed(name, original.name) ? name.trim() : cur.name,
+          intro: changed(intro, original.intro) ? intro.trim() : cur.intro,
+          links: changed(links, original.links) ? parsed : cur.links,
+        }), "Edit name & intro");
       },
     },
   };
@@ -224,7 +231,8 @@
       return { ref: { index, original }, values: original };
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
-    return { ref: {}, values: { ...SITE, links: (SITE.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") } };
+    const values = { ...SITE, links: (SITE.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") };
+    return { ref: { original: values }, values };
   }
 
   // ─── Small UI helpers ──────────────────────────────────────────────

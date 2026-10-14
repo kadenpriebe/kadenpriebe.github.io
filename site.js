@@ -178,7 +178,8 @@ const pages = {
     const reading = indexed(allReading).sort(byDateDesc);
     const notes = indexed(allNotes).sort(byDateDesc);
     const current = reading.filter((b) => b.status === "reading");
-    const recent = (current.length ? current : reading).slice(0, 3);
+    const recent = (current.length ? current : reading).slice(0, 1);
+    const more = (n, href, label) => (n > 1 ? `<a class="btn-ghost more" href="${href}">${label} →</a>` : "");
 
     main.innerHTML = `
       <section class="hero">
@@ -188,19 +189,21 @@ const pages = {
       </section>
 
       <section>
-        <h2><a href="writing.html">Latest writing</a></h2>
-        ${posts.length ? `<ul class="rows">${posts.slice(0, 5).map(postItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        <h2><a href="writing.html">Writing</a></h2>
+        ${posts.length ? `<ul class="rows">${posts.slice(0, 1).map(postItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        ${more(posts.length, "writing.html", `See all ${posts.length} posts`)}
       </section>
 
       <section>
-        <h2><a href="reading.html">${current.length ? "Currently reading" : "Recently read"}</a></h2>
+        <h2><a href="reading.html">Reading</a></h2>
         ${recent.length ? `<ul class="books">${recent.map(bookItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        ${more(reading.length, "reading.html", `See all ${reading.length} on the reading list`)}
       </section>
 
       <section>
         <h2><a href="notes.html">Drafts</a></h2>
         ${notes.length ? `<ul class="notes">${notes.slice(0, 1).map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
-        ${notes.length > 1 ? `<a class="btn-ghost more" href="notes.html">See all ${notes.length} drafts →</a>` : ""}
+        ${more(notes.length, "notes.html", `See all ${notes.length} drafts`)}
       </section>`;
   },
 
