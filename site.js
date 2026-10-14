@@ -94,6 +94,14 @@ const postItem = (p) => `
     <time>${fmtDate(p.date, { month: "short", day: "numeric" })}</time>
   </li>`;
 
+// Optional outside link on a post or note. Only http(s) and mailto links are rendered.
+function extLink(url) {
+  if (!/^(https?:|mailto:)/i.test(url || "")) return "";
+  let label = url;
+  try { label = new URL(url).hostname.replace(/^www\./, "") || url; } catch {}
+  return `<a class="ext" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
+}
+
 const bookItem = (b) => `
   <li class="book">
     <div class="book-head">
@@ -109,6 +117,7 @@ const noteItem = (n) => `
   <li class="note">
     <time>${fmtDate(n.date)}</time>
     <div class="note-body">${md(n.text)}</div>
+    ${extLink(n.link)}
   </li>`;
 
 // ─── Pages ───────────────────────────────────────────────────────────
@@ -176,6 +185,7 @@ const pages = {
         <header class="post-head">
           <h1>${esc(post.title)}</h1>
           <time>${fmtDate(post.date, { year: "numeric", month: "long", day: "numeric" })}</time>
+          ${extLink(post.link)}
         </header>
         <div class="prose">${md(body)}</div>
       </article>

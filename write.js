@@ -83,6 +83,10 @@ function changeItem(path, index, original, replacement, message) {
 const field = (id, label, input) => `<label for="${id}">${label}</label>${input}`;
 const input = (id, v = "", extra = "") => `<input id="${id}" value="${esc(v)}" autocomplete="off" ${extra}>`;
 const area = (id, v = "", rows = 8, ph = "") => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}">${esc(v)}</textarea>`;
+// Accepts "example.com" and turns it into a proper https:// link.
+const cleanLink = (s = "") => { s = s.trim(); return s && !/^(https?:|mailto:)/i.test(s) ? "https://" + s : s; };
+const linkField = (v) => field("link", "Link (optional)", input("link", v.link, 'placeholder="https://" inputmode="url"'));
+const setOrDrop = (obj, key, val) => { val ? (obj[key] = val) : delete obj[key]; return obj; };
 const dateField = (v) => field("date", "Date", input("date", v, 'type="date"'));
 
 const KINDS = {
@@ -90,18 +94,19 @@ const KINDS = {
     fields: (v, editing) =>
       field("title", "Title", input("title", v.title)) +
       (editing ? dateField(v.date) : "") +
+      linkField(v) +
       field("body", "Write (markdown works)", area("body", v.body, 16, "Start writing…")),
-    async create({ title, body }) {
+    async create({ title, body, link }) {
       const slug = slugify(title);
       if (!slug) throw new Error("Give the post a title.");
       if (!body.trim()) throw new Error("Write something first.");
       const { data } = await readJSON("content/posts.json");
       if (data.some((p) => p.slug === slug)) throw new Error(`You already have a post called “${slug}”.`);
       await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
-      await updateJSON("content/posts.json", (l) => void l.unshift({ slug, title, date: today() }), `Post: ${title}`);
+      await updateJSON("content/posts.json", (l) => void l.unshift(setOrDrop({ slug, title, date: today() }, "link", cleanLink(link))), `Post: ${title}`);
       return `post.html?p=${slug}`;
     },
-    async save(ref, { title, date, body }) {
+    async save(ref, { title, date, body, link }) {
       if (!title.trim()) throw new Error("Give the post a title.");
       const path = `content/posts/${ref.slug}.md`;
       const existing = await readFile(path);
@@ -111,6 +116,7 @@ const KINDS = {
         if (!p) throw new Error(CHANGED);
         p.title = title.trim();
         p.date = date || p.date;
+        setOrDrop(p, "link", cleanLink(link));
       }, `Edit post: ${title}`);
       return `post.html?p=${ref.slug}`;
     },
@@ -122,15 +128,18 @@ const KINDS = {
   },
 
   note: {
-    fields: (v, editing) => (editing ? dateField(v.date) : "") + field("text", "Note", area("text", v.text, 6, "What's on your mind?")),
-    async create({ text }) {
+    fields: (v, editing) =>
+      (editing ? dateField(v.date) : "") +
+      field("text", "Note", area("text", v.text, 6, "What's on your mind?")) +
+      linkField(v),
+    async create({ text, link }) {
       if (!text.trim()) throw new Error("Write something first.");
-      await updateJSON("content/notes.json", (l) => void l.unshift({ date: today(), text: text.trim() }), "Note");
+      await updateJSON("content/notes.json", (l) => void l.unshift(setOrDrop({ date: today(), text: text.trim() }, "link", cleanLink(link))), "Note");
       return "notes.html";
     },
-    async save(ref, { date, text }) {
+    async save(ref, { date, text, link }) {
       if (!text.trim()) throw new Error("A note can't be empty. Use Delete instead.");
-      const next = { ...ref.original, date: date || ref.original.date, text: text.trim() };
+      const next = setOrDrop({ ...ref.original, date: date || ref.original.date, text: text.trim() }, "link", cleanLink(link));
       await changeItem("content/notes.json", ref.index, ref.original, next, "Edit note");
       ref.original = next;
       return "notes.html";
@@ -147,14 +156,15 @@ const KINDS = {
         `<div class="two">${field("status", "Status", `<select id="status"><option value="reading"${sel("reading")}>Reading now</option><option value="finished"${sel("finished")}>Finished</option><option value="want"${sel("want")}>Want to read</option></select>`)}
          ${field("type", "Type", input("type", v.type ?? "book"))}</div>` +
         (editing ? dateField(v.date) : "") +
-        field("link", "Link (optional)", input("link", v.link, 'type="url" placeholder="https://"')) +
+        linkField(v) +
         field("note", "Your thoughts (optional)", area("note", v.note, 6))
       );
     },
     build(base, f) {
       if (!f.title.trim()) throw new Error("Give it a title.");
       const item = { ...base, title: f.title.trim(), author: f.author.trim(), type: f.type.trim() || "book", status: f.status };
-      for (const k of ["link", "note"]) f[k].trim() ? (item[k] = f[k].trim()) : delete item[k];
+      setOrDrop(item, "link", cleanLink(f.link));
+      setOrDrop(item, "note", f.note.trim());
       return item;
     },
     async create(f) {

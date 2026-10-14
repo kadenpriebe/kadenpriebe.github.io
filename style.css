@@ -241,3 +241,7 @@ button.danger {
   cursor: pointer;
 }
 button.danger:hover { background: #c0392b; color: #fff; }
+
+.ext { display: inline-block; margin-top: 6px; font: 14px/1.4 var(--mono); color: var(--accent); text-decoration: none; }
+.ext:hover { text-decoration: underline; }
+.post-head .ext { margin: 8px 0 0 16px; }
