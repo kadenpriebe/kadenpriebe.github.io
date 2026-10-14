@@ -199,7 +199,8 @@ const pages = {
 
       <section>
         <h2><a href="notes.html">Drafts</a></h2>
-        ${notes.length ? `<ul class="notes">${notes.slice(0, 3).map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        ${notes.length ? `<ul class="notes">${notes.slice(0, 1).map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        ${notes.length > 1 ? `<a class="btn-ghost more" href="notes.html">See all ${notes.length} drafts →</a>` : ""}
       </section>`;
   },
 

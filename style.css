@@ -250,6 +250,7 @@ textarea.autogrow { resize: none; overflow: hidden; min-height: 3em; }
 .btn-primary:disabled { opacity: 0.4; cursor: wait; }
 .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--muted); }
 .btn-ghost:hover { color: var(--text); }
+.more { display: inline-block; margin-top: 20px; text-decoration: none; }
 .form-msg { font-size: 15px; color: var(--muted); }
 .form-msg.err { color: var(--danger); }
 button.link { background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
