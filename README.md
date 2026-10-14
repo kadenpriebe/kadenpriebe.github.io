@@ -28,7 +28,7 @@ Reading `status` can be `reading`, `finished`, or `want`.
 
 ## Publishing
 
-The site is live at https://kadenpriebe.github.io/my-site/ (GitHub Pages, from the `main` branch).
+The site is live at https://kadenpriebe.github.io/ (GitHub Pages, from the `main` branch).
 
 After adding or editing anything, publish it with:
 
