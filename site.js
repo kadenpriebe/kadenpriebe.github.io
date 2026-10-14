@@ -40,8 +40,12 @@ function md(text) {
   return window.marked ? marked.parse(text) : `<pre>${esc(text)}</pre>`;
 }
 
+// "Write" only appears in browsers that have the GitHub token saved (see write.js),
+// i.e. just on your devices. Visitors never see it.
+const isOwner = () => { try { return !!localStorage.getItem("gh_token"); } catch { return false; } };
+
 function renderChrome(page) {
-  const nav = NAV.map(
+  const nav = [...NAV, ...(isOwner() || page === "write" ? [{ href: "write.html", label: "Write", page: "write" }] : [])].map(
     (n) => `<a href="${n.href}"${n.page === page ? ' aria-current="page"' : ""}>${n.label}</a>`
   ).join("");
   document.querySelector("header").innerHTML = `
