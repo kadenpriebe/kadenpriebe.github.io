@@ -1,13 +1,5 @@
 [
   {
-    "title": "Example: a book you're reading",
-    "author": "Author Name",
-    "type": "book",
-    "status": "reading",
-    "date": "2026-10-13",
-    "note": "This is an example entry. Replace it with something you're actually reading. Notes can use **markdown**."
-  },
-  {
     "title": "Example: an article you liked",
     "author": "Author Name",
     "type": "article",
