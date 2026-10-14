@@ -213,7 +213,7 @@ function setStatus(html = "", cls = "") {
 const fail = (err) => setStatus(esc(err.message), "err");
 
 const ok = (page, what = "Published!") =>
-  setStatus(`${what} It'll be live in about a minute: <a href="${page}">view it</a>`, "ok");
+  setStatus(`${what} GitHub takes about a minute to update the site: <a href="${page}">view it</a>. Still seeing the old version? Hard-refresh with Cmd+Shift+R.`, "ok");
 
 function drawTabs() {
   const labels = { post: "New post", note: "New note", read: "New reading", edit: "Edit existing" };
