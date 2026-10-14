@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-10-14",
+    "title": "bio/acc manifesto",
+    "author": "",
+    "type": "book",
+    "status": "finished",
+    "link": "https://bioacc.life/"
+  },
+  {
     "title": "Example: an article you liked",
     "author": "Author Name",
     "type": "article",
