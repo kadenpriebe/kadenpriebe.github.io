@@ -207,6 +207,8 @@ const pages = {
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 
+  async write() {}, // filled in by write.js
+
   async about(main) {
     const body = await load("content/about.md", "text");
     main.innerHTML = `<article class="prose">${md(body)}</article>`;

@@ -192,3 +192,38 @@ pre code { padding: 0; background: none; }
   h1, .hero h1 { font-size: 34px; }
   nav, .header-right { gap: 16px; }
 }
+
+/* ─── Write page ─── */
+
+form label { display: block; margin: 20px 0 6px; font: 13px/1 var(--mono); color: var(--muted); }
+input, textarea, select {
+  width: 100%;
+  font: inherit;
+  font-size: 18px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+textarea { resize: vertical; line-height: 1.55; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+#publish, #save-token {
+  font: 15px/1 var(--mono);
+  padding: 12px 22px;
+  border: none;
+  border-radius: 99px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+}
+#publish:disabled, #save-token:disabled { opacity: 0.4; cursor: not-allowed; }
+#msg { font-size: 16px; color: var(--muted); }
+#msg.ok { color: var(--accent); }
+#msg.err { color: #c0392b; }
+#token-box { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
+.token-row { display: flex; gap: 8px; }
+.token-row input { font-size: 15px; }
+button.link { background: none; border: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
