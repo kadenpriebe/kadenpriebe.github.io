@@ -167,7 +167,7 @@
         return (
           input("title", v.title, 'class="title-input" placeholder="Title"') +
           `<div class="two">${label("Author", input("author", v.author))}${label("Type", input("type", v.type ?? "book"))}</div>` +
-          `<div class="two">${label("Status", `<select name="status"><option value="reading"${sel("reading")}>Reading now</option><option value="finished"${sel("finished")}>Finished</option><option value="want"${sel("want")}>Want to read</option></select>`)}${editing ? dateInput(v.date) : ""}</div>` +
+          `<div class="two">${label("Status", `<select name="status">${Object.entries(STATUS_LABELS).map(([k, l]) => `<option value="${k}"${sel(k)}>${l}</option>`).join("")}</select>`)}${editing ? dateInput(v.date) : ""}</div>` +
           linkInput(v.link) +
           label("Your thoughts (optional)", area("note", v.note, 4))
         );

@@ -13,7 +13,14 @@ const NAV = [
   { href: "about.html", label: "My story", page: "about" },
 ];
 
-const STATUS_LABELS = { reading: "Reading now", finished: "Finished", want: "Want to read" };
+const STATUS_LABELS = {
+  reading: "Reading now",
+  paused: "Started, coming back to it",
+  finished: "Finished",
+  skimmed: "Skimmed",
+  dropped: "Started, probably won't finish",
+  want: "Want to read",
+};
 
 const esc = (s = "") =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -270,7 +277,8 @@ const pages = {
     const all = await load("content/reading.json");
     window.SITE_DATA = { reading: all };
     const items = indexed(all).sort(byDateDesc);
-    const filters = ["all", "reading", "finished", "want"];
+    // Only offer filters for statuses something actually has.
+    const filters = ["all", ...Object.keys(STATUS_LABELS).filter((s) => items.some((b) => b.status === s))];
     const draw = (f) => {
       const shown = f === "all" ? items : items.filter((b) => b.status === f);
       main.querySelector(".books").innerHTML = shown.map(bookItem).join("") || `<p class="empty">Nothing here yet.</p>`;

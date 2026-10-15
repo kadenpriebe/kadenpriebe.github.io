@@ -4,7 +4,7 @@
 //   node add.js post "My post title"                  → makes content/posts/my-post-title.md
 //   node add.js note "A rough thought"                → adds a draft to content/notes.json
 //   node add.js read "Title" "Author" [status] [type] → adds to content/reading.json
-//                    status: reading | finished | want   (default: reading)
+//                    status: reading | paused | finished | skimmed | dropped | want   (default: reading)
 //                    type:   book | article | ...        (default: book)
 
 const fs = require("fs");
