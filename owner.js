@@ -202,6 +202,33 @@
       remove: (ref) => changeItem("content/reading.json", ref.index, ref.original, null, "Delete reading entry"),
     },
 
+    // "Books that shaped me" on the Reading page: past reads, no status or date.
+    shaped: {
+      noun: "book",
+      fields: (v) =>
+        input("title", v.title, 'class="title-input" placeholder="Title"') +
+        `<div class="two">${label("Author", input("author", v.author))}${linkInput(v.link)}</div>` +
+        label("How it impacted you (optional)", area("note", v.note, 4, "", "body-input")) + tangentTool,
+      build(base, f) {
+        if (!f.title.trim()) throw new Error("Give it a title.");
+        const item = { ...base, title: f.title.trim() };
+        setOrDrop(item, "author", f.author.trim());
+        setOrDrop(item, "link", cleanLink(f.link));
+        setOrDrop(item, "note", f.note.trim());
+        return item;
+      },
+      async create(f) {
+        const item = this.build({}, f);
+        await updateJSON("content/shaped.json", (l) => void l.push(item), `Shaped me: ${item.title}`);
+        return "reading.html";
+      },
+      async save(ref, f) {
+        const next = this.build({}, f);
+        await changeItem("content/shaped.json", ref.index, ref.original, next, `Edit shaped me: ${next.title}`);
+      },
+      remove: (ref) => changeItem("content/shaped.json", ref.index, ref.original, null, "Delete from books that shaped me"),
+    },
+
     about: {
       fields: (v) => area("body", v.body, 14, "", "body-input") + tangentTool,
       async save(_, { body }) {
@@ -249,9 +276,9 @@
   function currentValues(kind, btn) {
     const D = window.SITE_DATA || {};
     if (kind === "post") return { ref: { slug: btn.dataset.slug }, values: { ...D.post, body: D.body } };
-    if (kind === "note" || kind === "read") {
+    if (kind === "note" || kind === "read" || kind === "shaped") {
       const index = +btn.dataset.i;
-      const original = strip((kind === "note" ? D.notes : D.reading)[index]);
+      const original = strip({ note: D.notes, read: D.reading, shaped: D.shaped }[kind][index]);
       return { ref: { index, original }, values: original };
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
@@ -401,7 +428,7 @@
   }
 
   function compose(kind) {
-    const titles = { post: "New post", note: "New draft", read: "New reading" };
+    const titles = { post: "New post", note: "New draft", read: "New reading", shaped: "A book that shaped you" };
     const el = sheet(`
       <form class="compose">
         <div class="sheet-bar">
@@ -468,7 +495,7 @@
       if (info.mode === "new") {
         const page = await KINDS[info.kind].create(collect(form));
         const here = document.body.dataset.page;
-        const showsIt = { post: [], note: ["notes", "home"], read: ["reading", "home"] }[info.kind].includes(here);
+        const showsIt = { post: [], note: ["notes", "home"], read: ["reading", "home"], shaped: ["reading"] }[info.kind].includes(here);
         if (showsIt) { closeSheet(info.sheet); await rerender(); }
         else location.href = page;
       } else {
@@ -486,6 +513,7 @@
     if (!btn) return;
     const act = btn.dataset.act;
     if (act === "tangent") addTangent(btn.closest("form"));
+    else if (act === "new") compose(btn.dataset.kind);
     else if (act === "edit") openInline(btn);
     else if (act === "delete") removeItem(btn);
     else if (act === "signout") {

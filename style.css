@@ -155,6 +155,10 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
 .note-body > :first-child { margin-top: 4px; }
 .note-body > :last-child { margin-bottom: 0; }
 
+.shaped { margin-top: 64px; }
+.shaped .lede { font-size: 17px; }
+.add-shaped { margin-top: 20px; }
+
 /* ─── Collapse all ─── */
 .row-main { min-width: 0; }
 .excerpt { margin: 4px 0 2px; color: var(--muted); font-size: 17px; line-height: 1.5; }

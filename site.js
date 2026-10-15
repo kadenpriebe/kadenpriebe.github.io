@@ -206,6 +206,16 @@ const bookItem = (b) => `
     ${ownerCtl(`data-kind="read" data-i="${b._i}"`)}
   </li>`;
 
+const shapedItem = (b) => `
+  <li class="book${b.note ? " foldable" : ""}" data-i="${b._i}">
+    <div class="book-head">
+      <span class="book-title">${b.link ? `<a href="${esc(b.link)}">${esc(b.title)}</a>` : esc(b.title)}</span>
+    </div>
+    ${b.author ? `<div class="meta">${esc(b.author)}</div>` : ""}
+    ${b.note ? `<div class="note-body">${md(b.note)}</div>${FOLD}` : ""}
+    ${ownerCtl(`data-kind="shaped" data-i="${b._i}"`)}
+  </li>`;
+
 const noteItem = (n) => `
   <li class="note foldable" data-i="${n._i}">
     <time>${fmtDate(n.date)}</time>${FOLD}
@@ -339,21 +349,29 @@ const pages = {
   },
 
   async reading(main) {
-    const all = await load("content/reading.json");
-    window.SITE_DATA = { reading: all };
+    const [all, allShaped] = await Promise.all([load("content/reading.json"), load("content/shaped.json").catch(() => [])]);
+    window.SITE_DATA = { reading: all, shaped: allShaped };
     const items = indexed(all).sort(byDateDesc);
+    const shaped = indexed(allShaped);
     // Only offer filters for statuses something actually has.
     const filters = ["all", ...Object.keys(STATUS_LABELS).filter((s) => items.some((b) => b.status === s))];
     const draw = (f) => {
       const shown = f === "all" ? items : items.filter((b) => b.status === f);
-      main.querySelector(".books").innerHTML = shown.map(bookItem).join("") || `<p class="empty">Nothing here yet.</p>`;
+      main.querySelector(".books.main-list").innerHTML = shown.map(bookItem).join("") || `<p class="empty">Nothing here yet.</p>`;
       main.querySelectorAll(".filters button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === f));
     };
     main.innerHTML = `
       <h1>Reading</h1>
       ${lede("reading")}
-      <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}${items.some((b) => b.note) ? collapseBtn() : ""}</div>
-      <ul class="books"></ul>`;
+      <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}${[...items, ...shaped].some((b) => b.note) ? collapseBtn() : ""}</div>
+      <ul class="books main-list"></ul>
+      ${shaped.length || OWNER ? `
+      <section class="shaped">
+        <h2>Books that shaped me</h2>
+        ${lede("shaped")}
+        ${shaped.length ? `<ul class="books">${shaped.map(shapedItem).join("")}</ul>` : ""}
+        ${OWNER ? `<button type="button" class="collapse-all add-shaped" data-act="new" data-kind="shaped">+ Add a book</button>` : ""}
+      </section>` : ""}`;
     main.querySelector(".filters").addEventListener("click", (e) => e.target.dataset.f && draw(e.target.dataset.f));
     draw("all");
   },
