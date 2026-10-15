@@ -11,7 +11,7 @@ const NAV = [
   { href: "writing.html", label: "Writing", page: "writing" },
   { href: "reading.html", label: "Reading", page: "reading" },
   { href: "notes.html", label: "Drafts", page: "notes" },
-  { href: "about.html", label: "My story", page: "about" },
+  { href: "story.html", label: "My story", page: "about" },
 ];
 
 const STATUS_LABELS = {
