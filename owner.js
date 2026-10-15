@@ -5,7 +5,7 @@
 // Visitors never see any of it: without the token this file does nothing, except
 // show the sign-in sheet if you open any page with #login on the end of the address.
 
-(() => {
+(function ownerTools() {
   const REPO = "kadenpriebe/kadenpriebe.github.io";
   const BRANCH = "main";
   const API = `https://api.github.com/repos/${REPO}/contents/`;
@@ -63,12 +63,23 @@
     return f ? { sha: f.sha, text: dec(f.content) } : null;
   }
 
+  // A tab left open from before an update keeps running the old code, and old code can
+  // save things the old way. Before any write, check this is still the code the site
+  // serves; if it isn't, stop and ask for a reload (the form keeps what you typed).
+  async function checkFresh() {
+    const live = await fetch(`owner.js?check=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+    if (live && !live.includes(ownerTools.toString()))
+      throw new Error("Your site was updated since this page loaded. Copy what you wrote, press Cmd+Shift+R, then save again.");
+  }
+
   async function writeFile(path, text, message, sha) {
+    await checkFresh();
     await gh(path, { method: "PUT", body: JSON.stringify({ message, content: enc(text), branch: BRANCH, ...(sha ? { sha } : {}) }) });
     remember(path, text);
   }
 
   async function deleteFile(path, sha, message) {
+    await checkFresh();
     await gh(path, { method: "DELETE", body: JSON.stringify({ message, sha, branch: BRANCH }) });
     remember(path, null);
   }
@@ -199,14 +210,12 @@
       },
     },
 
-    // The line under the Writing / Reading / Drafts heading. Only that one line is
-    // written, so nothing else in site.json can be put back to an older version.
+    // The line under the Writing / Reading / Drafts heading. These live in their own
+    // file so saving the homepage intro (site.json) can never touch them.
     lede: {
       fields: (v) => label("Line under the heading. Links work like [email me](mailto:you@example.com)", area("text", v.text, 3)),
       async save({ page }, { text }) {
-        await updateJSON("content/site.json", (cur) => {
-          cur.ledes = { ...cur.ledes, [page]: text.trim() };
-        }, "Edit page intro");
+        await updateJSON("content/ledes.json", (cur) => ({ ...cur, [page]: text.trim() }), "Edit page intro");
       },
     },
 

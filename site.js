@@ -1,5 +1,6 @@
-// Name, intro, footer links and the line under each page heading live in content/site.json
-// (editable on the site when signed in). These are only the fallback if that file can't be loaded.
+// Name, intro and footer links live in content/site.json, and the line under each page
+// heading in content/ledes.json (both editable on the site when signed in).
+// These are only the fallback if those files can't be loaded.
 const SITE = {
   name: "Kaden Priebe",
   intro: "",
@@ -324,7 +325,9 @@ const pages = {
 // owner.js calls window.siteRender() after each save to redraw the page with your change.
 window.siteRender = async () => {
   const page = document.body.dataset.page;
-  try { Object.assign(SITE, await load("content/site.json")); } catch {}
+  const [site, ledes] = await Promise.all([load("content/site.json").catch(() => null), load("content/ledes.json").catch(() => null)]);
+  if (site) Object.assign(SITE, site);
+  if (ledes) SITE.ledes = ledes;
   renderChrome(page);
   const main = document.querySelector("main");
   try {
