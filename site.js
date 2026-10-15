@@ -278,7 +278,7 @@ const pages = {
     };
     main.innerHTML = `
       <h1>Reading</h1>
-      <p class="lede">Books, articles, and other things I've read — with what I thought of them.</p>
+      <p class="lede">i devour what currently excites me. i will not finish the thing i started unless i am fully encapsulated by it</p>
       <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}</div>
       <ul class="books"></ul>`;
     main.querySelector(".filters").addEventListener("click", (e) => e.target.dataset.f && draw(e.target.dataset.f));
