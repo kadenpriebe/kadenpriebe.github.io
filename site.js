@@ -1,9 +1,10 @@
-// Name, intro and footer links live in content/site.json (editable on the homepage when signed in).
-// These are only the fallback if that file can't be loaded.
+// Name, intro, footer links and the line under each page heading live in content/site.json
+// (editable on the site when signed in). These are only the fallback if that file can't be loaded.
 const SITE = {
   name: "Kaden Priebe",
   intro: "",
   links: [],
+  ledes: {},
 };
 
 const NAV = [
@@ -105,6 +106,13 @@ const ownerCtl = (attrs, { del = true, label = "Edit" } = {}) =>
         del ? `<button type="button" data-act="delete" ${attrs}>Delete</button>` : ""
       }</div>`
     : "";
+
+// The line under a page's heading. Inline markdown works, e.g. [email me](mailto:…).
+const lede = (page) => {
+  const text = (SITE.ledes || {})[page] || "";
+  const html = window.marked ? marked.parseInline(text) : esc(text);
+  return `<div class="lede-wrap">${text ? `<p class="lede">${html}</p>` : ""}${ownerCtl(`data-kind="lede" data-lede="${page}"`, { del: false, label: text ? "Edit" : "Add a line under the heading" })}</div>`;
+};
 
 // Keeps each item's position in its file, so owner.js knows which entry you're editing.
 const indexed = (arr) => arr.map((x, i) => ({ ...x, _i: i }));
@@ -242,6 +250,7 @@ const pages = {
     for (const p of posts) (years[p.date.slice(0, 4)] ||= []).push(p);
     main.innerHTML = `
       <h1>Writing</h1>
+      ${lede("writing")}
       ${Object.keys(years).sort().reverse().map((y) => `
         <section>
           <h2>${y}</h2>
@@ -286,7 +295,7 @@ const pages = {
     };
     main.innerHTML = `
       <h1>Reading</h1>
-      <p class="lede">i devour what currently excites me. i will not finish the thing i started unless i am fully encapsulated by it</p>
+      ${lede("reading")}
       <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}</div>
       <ul class="books"></ul>`;
     main.querySelector(".filters").addEventListener("click", (e) => e.target.dataset.f && draw(e.target.dataset.f));
@@ -299,7 +308,7 @@ const pages = {
     const notes = indexed(all).sort(byDateDesc);
     main.innerHTML = `
       <h1>Drafts</h1>
-      <p class="lede">thinking out loud. please <a href="mailto:kadenpriebe04@gmail.com">email me</a> and push back in the name of intellectual honesty and if you push back in ways i didnt see before, ill prob want to be your friend</p>
+      ${lede("notes")}
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 

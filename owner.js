@@ -199,6 +199,17 @@
       },
     },
 
+    // The line under the Writing / Reading / Drafts heading. Only that one line is
+    // written, so nothing else in site.json can be put back to an older version.
+    lede: {
+      fields: (v) => label("Line under the heading. Links work like [email me](mailto:you@example.com)", area("text", v.text, 3)),
+      async save({ page }, { text }) {
+        await updateJSON("content/site.json", (cur) => {
+          cur.ledes = { ...cur.ledes, [page]: text.trim() };
+        }, "Edit page intro");
+      },
+    },
+
     site: {
       fields: (v) =>
         label("Your name", input("name", v.name)) +
@@ -234,6 +245,7 @@
       return { ref: { index, original }, values: original };
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
+    if (kind === "lede") return { ref: { page: btn.dataset.lede }, values: { text: (SITE.ledes || {})[btn.dataset.lede] || "" } };
     const values = { ...SITE, links: (SITE.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") };
     return { ref: { original: values }, values };
   }
@@ -298,6 +310,7 @@
       kind === "post" ? btn.closest("article") :
       kind === "about" ? $("main") :
       kind === "site" ? btn.closest(".hero") :
+      kind === "lede" ? btn.closest(".lede-wrap") :
       btn.closest("li");
     const form = document.createElement("form");
     form.className = "inline-edit";
