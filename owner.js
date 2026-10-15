@@ -227,6 +227,7 @@
         });
         const changed = (v, was) => v.replace(/\r\n?/g, "\n") !== was;
         await updateJSON("content/site.json", (cur) => ({
+          ...cur, // keep everything else in the file (e.g. the lines under page headings)
           name: changed(name, original.name) ? name.trim() : cur.name,
           intro: changed(intro, original.intro) ? intro.trim() : cur.intro,
           links: changed(links, original.links) ? parsed : cur.links,
