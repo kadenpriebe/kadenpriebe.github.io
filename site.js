@@ -299,7 +299,7 @@ const pages = {
     const notes = indexed(all).sort(byDateDesc);
     main.innerHTML = `
       <h1>Drafts</h1>
-      <p class="lede">Rough thoughts, half-formed ideas, and things I'm still working out.</p>
+      <p class="lede">thinking out loud. please <a href="mailto:kadenpriebe04@gmail.com">email me</a> and push back in the name of intellectual honesty and if you push back in ways i didnt see before, ill prob want to be your friend</p>
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 
