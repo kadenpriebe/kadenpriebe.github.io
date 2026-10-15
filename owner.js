@@ -99,6 +99,9 @@
     `<textarea name="${name}" rows="${rows}" class="autogrow ${cls}" placeholder="${esc(ph)}">${esc(v)}</textarea>`;
   const linkInput = (v) => label("Link (optional)", input("link", v, 'placeholder="https://" inputmode="url"'));
   const dateInput = (v) => label("Date", input("date", v, 'type="date"'));
+  const tangentTool = `<div class="write-tools">
+    <button type="button" class="btn-ghost" data-act="tangent" title="Wrap the selected text in a tangent (⌘⇧9)">+ tangent</button>
+    <span>or type ((like this)). Readers tap to open it.</span></div>`;
 
   const KINDS = {
     post: {
@@ -106,7 +109,7 @@
       fields: (v, editing) =>
         input("title", v.title, 'class="title-input" placeholder="Title"') +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
-        area("body", v.body, 14, "Start writing… (markdown works)", "body-input"),
+        area("body", v.body, 14, "Start writing… (markdown works)", "body-input") + tangentTool,
       async create({ title, body, link }) {
         const slug = slugify(title);
         if (!slug) throw new Error("Give the post a title.");
@@ -142,7 +145,7 @@
     note: {
       noun: "draft",
       fields: (v, editing) =>
-        area("text", v.text, 5, "What's on your mind?", "body-input") +
+        area("text", v.text, 5, "What's on your mind?", "body-input") + tangentTool +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>`,
       async create({ text, link }) {
         if (!text.trim()) throw new Error("Write something first.");
@@ -189,7 +192,7 @@
     },
 
     about: {
-      fields: (v) => area("body", v.body, 14, "", "body-input"),
+      fields: (v) => area("body", v.body, 14, "", "body-input") + tangentTool,
       async save(_, { body }) {
         const f = await readFile("content/about.md");
         await writeFile("content/about.md", body.trim() + "\n", "Edit About page", f?.sha);
@@ -459,7 +462,8 @@
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
-    if (act === "edit") openInline(btn);
+    if (act === "tangent") addTangent(btn.closest("form"));
+    else if (act === "edit") openInline(btn);
     else if (act === "delete") removeItem(btn);
     else if (act === "signout") {
       if (!confirm("Sign out of editing on this browser?")) return;
@@ -477,6 +481,7 @@
     }
   });
 
+  document.addEventListener("mousedown", (e) => { if (e.target.closest('[data-act="tangent"]')) e.preventDefault(); });
   document.addEventListener("input", (e) => { if (e.target.matches("textarea.autogrow")) grow(e.target, true); });
   document.addEventListener("keydown", (e) => {
     // Cmd/Ctrl+Enter saves, Esc cancels.
@@ -484,7 +489,24 @@
     if (!form) return;
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
     if (e.key === "Escape") $('[data-act="cancel"]', form)?.click();
+    if (e.code === "Digit9" && e.shiftKey && (e.metaKey || e.ctrlKey) && $(".body-input", form)) { e.preventDefault(); addTangent(form); }
   });
+
+  // Wrap the selection in ((…)), or drop an empty one at the cursor and put you inside it.
+  function addTangent(form) {
+    const ta = $(".body-input", form);
+    if (!ta) return;
+    if (document.activeElement !== ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    const { selectionStart: a, selectionEnd: b } = ta;
+    const sel = ta.value.slice(a, b);
+    // execCommand keeps Cmd+Z working; setRangeText is the fallback.
+    if (!document.execCommand("insertText", false, `((${sel}))`)) {
+      ta.setRangeText(`((${sel}))`, a, b, "end");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    const caret = sel ? a + sel.length + 4 : a + 2;
+    ta.setSelectionRange(caret, caret);
+  }
 
   // ─── Start ─────────────────────────────────────────────────────────
 

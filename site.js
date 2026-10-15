@@ -68,8 +68,28 @@ async function load(path, as = "json") {
 }
 
 function md(text) {
-  return window.marked ? marked.parse(text) : `<pre>${esc(text)}</pre>`;
+  return window.marked ? marked.parse(tangents(text)) : `<pre>${esc(text)}</pre>`;
 }
+
+// ((Text in double parentheses)) becomes a tangent: a small button readers tap to open it.
+// Innermost first, so tangents can go inside tangents. Markdown still works inside.
+function tangents(text) {
+  // In ")))" the tangent closes on the last two, so a link or (aside) can end right before it.
+  const inner = /\(\(((?:(?!\(\(|\)\)(?!\)))[^])*?)\)\)(?!\))/g;
+  for (let prev; prev !== text; ) {
+    prev = text;
+    text = text.replace(inner, (all, body) => (!body.trim() || /\n\s*\n/.test(body) ? all :
+      `<span class="tangent"><button type="button" class="tangent-toggle" aria-expanded="false">tangent</button><span class="tangent-body">${body.trim()}</span></span>`));
+  }
+  return text;
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".tangent-toggle");
+  if (!btn) return;
+  const open = btn.parentElement.classList.toggle("open");
+  btn.setAttribute("aria-expanded", open);
+});
 
 // Edit / Delete buttons, only rendered for the owner. owner.js handles the clicks.
 const ownerCtl = (attrs, { del = true, label = "Edit" } = {}) =>

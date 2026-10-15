@@ -178,6 +178,30 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
 .prose h3 { font-size: 21px; font-weight: 600; margin: 32px 0 8px; }
 .prose img { max-width: 100%; height: auto; border-radius: 4px; }
 .prose a, .note-body a { text-decoration-color: var(--accent); }
+
+.tangent-toggle {
+  font: 12px/1 var(--mono);
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 3px 8px;
+  margin: 0 2px;
+  vertical-align: 2px;
+  cursor: pointer;
+}
+.tangent-toggle:hover { border-color: var(--accent); }
+.tangent-toggle::after { content: " +"; }
+.tangent.open > .tangent-toggle::after { content: " −"; }
+.tangent-body { display: none; }
+.tangent.open > .tangent-body {
+  display: block;
+  margin: 10px 0 14px;
+  padding-left: 16px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+  font-size: 0.94em;
+}
 blockquote { margin: 24px 0; padding-left: 20px; border-left: 2px solid var(--accent); color: var(--muted); font-style: italic; }
 hr { border: none; text-align: center; margin: 40px 0; }
 hr::after { content: "* * *"; color: var(--muted); letter-spacing: 0.5em; }
@@ -251,6 +275,8 @@ textarea.autogrow { resize: none; overflow: hidden; min-height: 3em; }
 .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--muted); }
 .btn-ghost:hover { color: var(--text); }
 .more { display: inline-block; margin-top: 20px; text-decoration: none; }
+.write-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 4px; font: 13px/1.4 var(--mono); color: var(--muted); }
+.write-tools .btn-ghost { padding: 7px 14px; font-size: 13px; }
 .form-msg { font-size: 15px; color: var(--muted); }
 .form-msg.err { color: var(--danger); }
 button.link { background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
