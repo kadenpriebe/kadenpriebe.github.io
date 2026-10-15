@@ -10,7 +10,7 @@ const NAV = [
   { href: "writing.html", label: "Writing", page: "writing" },
   { href: "reading.html", label: "Reading", page: "reading" },
   { href: "notes.html", label: "Drafts", page: "notes" },
-  { href: "about.html", label: "About", page: "about" },
+  { href: "about.html", label: "My story", page: "about" },
 ];
 
 const STATUS_LABELS = { reading: "Reading now", finished: "Finished", want: "Want to read" };

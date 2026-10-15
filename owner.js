@@ -195,7 +195,7 @@
       fields: (v) => area("body", v.body, 14, "", "body-input") + tangentTool,
       async save(_, { body }) {
         const f = await readFile("content/about.md");
-        await writeFile("content/about.md", body.trim() + "\n", "Edit About page", f?.sha);
+        await writeFile("content/about.md", body.trim() + "\n", "Edit My story", f?.sha);
       },
     },
 

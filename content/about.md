@@ -1,4 +1,4 @@
-# About
+# My story
 
 Hello im Kaden! I wrote the follow below cracked off some caffeine describing my story:
 
