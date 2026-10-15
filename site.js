@@ -166,11 +166,25 @@ function setupThemeToggle(btn) {
 
 // ─── List item templates ─────────────────────────────────────────────
 
-const postItem = (p) => `
-  <li class="row">
-    <a href="post.html?p=${encodeURIComponent(p.slug)}">${esc(p.title)}</a>
+// The Writing page passes an excerpt (so there's something to collapse); the homepage doesn't.
+const postItem = (p, excerpt = "") => `
+  <li class="row${excerpt ? " foldable" : ""}">
+    <div class="row-main">
+      <a href="post.html?p=${encodeURIComponent(p.slug)}">${esc(p.title)}</a>
+      ${excerpt ? `<p class="excerpt">${esc(excerpt)}</p>` : ""}
+    </div>
     <time>${fmtDate(p.date, { month: "short", day: "numeric" })}</time>
+    ${excerpt ? FOLD : ""}
   </li>`;
+
+// First paragraph of a post as plain text, without tangents, cut to about 220 characters.
+function excerptOf(text) {
+  const div = document.createElement("div");
+  div.innerHTML = md(text || "");
+  div.querySelectorAll(".tangent").forEach((t) => t.remove());
+  const first = [...div.querySelectorAll("p")].map((p) => p.textContent.trim()).find(Boolean) || "";
+  return first.length > 220 ? first.slice(0, 220).replace(/\s+\S*$/, "") + "…" : first;
+}
 
 // Optional outside link on a post or note. Only http(s) and mailto links are rendered.
 function extLink(url) {
@@ -181,24 +195,62 @@ function extLink(url) {
 }
 
 const bookItem = (b) => `
-  <li class="book" data-i="${b._i}">
+  <li class="book${b.note ? " foldable" : ""}" data-i="${b._i}">
     <div class="book-head">
       <span class="book-title">${b.link ? `<a href="${esc(b.link)}">${esc(b.title)}</a>` : esc(b.title)}</span>
       ${b.status ? `<span class="tag tag-${esc(b.status)}">${STATUS_LABELS[b.status] || esc(b.status)}</span>` : ""}
     </div>
     <div class="meta">${[b.author, b.type, b.date && fmtDate(b.date, { year: "numeric", month: "short" })]
       .filter(Boolean).map(esc).join(" · ")}</div>
-    ${b.note ? `<div class="note-body">${md(b.note)}</div>` : ""}
+    ${b.note ? `<div class="note-body">${md(b.note)}</div>${FOLD}` : ""}
     ${ownerCtl(`data-kind="read" data-i="${b._i}"`)}
   </li>`;
 
 const noteItem = (n) => `
-  <li class="note" data-i="${n._i}">
-    <time>${fmtDate(n.date)}</time>
+  <li class="note foldable" data-i="${n._i}">
+    <time>${fmtDate(n.date)}</time>${FOLD}
     <div class="note-body">${md(n.text)}</div>
     ${extLink(n.link)}
     ${ownerCtl(`data-kind="note" data-i="${n._i}"`)}
   </li>`;
+
+// ─── Collapse all (Writing, Reading, Drafts) ─────────────────────────
+// Collapsed: drafts show their first line, reading entries hide your thoughts, posts show
+// only titles. Tap one to open it. The choice is remembered per page in this browser.
+
+const FOLD = `<button type="button" class="fold" aria-label="Expand" aria-expanded="false"></button>`;
+const COLLAPSIBLE = ["writing", "reading", "notes"];
+const collapseMem = {};
+const isCollapsed = (page) => {
+  try { const v = localStorage.getItem(`collapsed:${page}`); if (v !== null) return v === "1"; } catch {}
+  return !!collapseMem[page];
+};
+const collapseBtn = () => `<button type="button" class="collapse-all" data-collapse></button>`;
+
+function applyCollapse(main, page) {
+  const on = COLLAPSIBLE.includes(page) && isCollapsed(page);
+  main.classList.toggle("collapsed", on);
+  main.querySelectorAll("[data-collapse]").forEach((b) => { b.textContent = on ? "Expand all" : "Collapse all"; });
+  main.querySelectorAll(".foldable.open").forEach((li) => li.classList.remove("open"));
+  main.querySelectorAll(".fold").forEach((b) => b.setAttribute("aria-expanded", "false"));
+}
+
+document.addEventListener("click", (e) => {
+  const main = document.querySelector("main");
+  const page = document.body.dataset.page;
+  if (e.target.closest("[data-collapse]")) {
+    const on = !isCollapsed(page);
+    collapseMem[page] = on;
+    try { localStorage.setItem(`collapsed:${page}`, on ? "1" : "0"); } catch {}
+    applyCollapse(main, page);
+    return;
+  }
+  if (!main.classList.contains("collapsed")) return;
+  const li = e.target.closest(".foldable");
+  if (!li || e.target.closest("a, form, button:not(.fold)")) return;
+  const open = li.classList.toggle("open");
+  li.querySelector(".fold")?.setAttribute("aria-expanded", open);
+});
 
 // ─── Pages ───────────────────────────────────────────────────────────
 
@@ -247,15 +299,18 @@ const pages = {
     const all = await load("content/posts.json");
     window.SITE_DATA = { posts: all };
     const posts = [...all].sort(byDateDesc);
+    const bodies = await Promise.all(posts.map((p) => load(`content/posts/${p.slug}.md`, "text").catch(() => "")));
+    const excerpts = Object.fromEntries(posts.map((p, i) => [p.slug, excerptOf(bodies[i])]));
     const years = {};
     for (const p of posts) (years[p.date.slice(0, 4)] ||= []).push(p);
     main.innerHTML = `
       <h1>Writing</h1>
       ${lede("writing")}
+      ${posts.some((p) => excerpts[p.slug]) ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
       ${Object.keys(years).sort().reverse().map((y) => `
         <section>
           <h2>${y}</h2>
-          <ul class="rows">${years[y].map(postItem).join("")}</ul>
+          <ul class="rows">${years[y].map((p) => postItem(p, excerpts[p.slug])).join("")}</ul>
         </section>`).join("") || `<p class="empty">Nothing yet.</p>`}`;
   },
 
@@ -297,7 +352,7 @@ const pages = {
     main.innerHTML = `
       <h1>Reading</h1>
       ${lede("reading")}
-      <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}</div>
+      <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}${items.some((b) => b.note) ? collapseBtn() : ""}</div>
       <ul class="books"></ul>`;
     main.querySelector(".filters").addEventListener("click", (e) => e.target.dataset.f && draw(e.target.dataset.f));
     draw("all");
@@ -310,6 +365,7 @@ const pages = {
     main.innerHTML = `
       <h1>Drafts</h1>
       ${lede("notes")}
+      ${notes.length ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
       ${notes.length ? `<ul class="notes">${notes.map(noteItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}`;
   },
 
@@ -332,6 +388,7 @@ window.siteRender = async () => {
   const main = document.querySelector("main");
   try {
     await pages[page](main);
+    applyCollapse(main, page);
     document.dispatchEvent(new CustomEvent("site:rendered", { detail: { page } }));
   } catch (err) {
     const fileHint =

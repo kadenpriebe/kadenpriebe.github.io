@@ -155,6 +155,57 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
 .note-body > :first-child { margin-top: 4px; }
 .note-body > :last-child { margin-bottom: 0; }
 
+/* ─── Collapse all ─── */
+.row-main { min-width: 0; }
+.excerpt { margin: 4px 0 2px; color: var(--muted); font-size: 17px; line-height: 1.5; }
+.page-tools { display: flex; justify-content: flex-end; margin: 16px 0 4px; }
+.collapse-all {
+  font: 13px/1 var(--mono);
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.collapse-all:hover { color: var(--text); }
+.filters .collapse-all { margin-left: auto; }
+.fold { display: none; }
+main.collapsed .foldable { position: relative; padding-right: 40px; cursor: pointer; }
+main.collapsed .fold {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font: 16px/1 var(--mono);
+  cursor: pointer;
+}
+main.collapsed .fold::before { content: "+"; }
+main.collapsed .foldable.open .fold { top: 20px; margin-top: 0; }
+main.collapsed .foldable.open .fold::before { content: "−"; }
+main.collapsed .foldable:hover .fold { color: var(--text); border-color: var(--muted); }
+main.collapsed .foldable:not(.open) .excerpt,
+main.collapsed .book.foldable:not(.open) .note-body,
+main.collapsed .foldable:not(.open) .ext,
+main.collapsed .foldable:not(.open) .owner-ctl { display: none; }
+main.collapsed .note.foldable:not(.open) .note-body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+}
+main.collapsed .note.foldable:not(.open) .tangent-body { display: none; }
+
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 8px; }
 .filters button {
   font: 14px/1 var(--mono);
