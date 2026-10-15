@@ -241,9 +241,32 @@
   const collect = (form) => Object.fromEntries(new FormData(form));
   const isDirty = (form) => form && [...form.querySelectorAll("input, textarea")].some((el) => el.value !== el.defaultValue);
 
-  function grow(el) {
-    el.style.height = "auto";
-    el.style.height = el.scrollHeight + 2 + "px";
+  // Measure on a hidden copy: collapsing the real box to measure it would shorten the
+  // page for a moment and make the browser scroll away from where you're typing.
+  function grow(el, follow = false) {
+    const m = el.cloneNode();
+    m.removeAttribute("name");
+    m.value = el.value;
+    m.style.cssText = `position:absolute;visibility:hidden;height:auto;min-height:0;width:${el.offsetWidth}px`;
+    el.after(m);
+    const h = m.scrollHeight + 2 + "px";
+    let caret = null;
+    if (follow) { m.value = el.value.slice(0, el.selectionEnd); caret = m.scrollHeight; }
+    m.remove();
+    if (el.style.height !== h) el.style.height = h;
+    if (caret !== null) keepInView(el, caret);
+  }
+
+  // Scroll just enough to keep the line you're typing on visible, like a doc editor.
+  function keepInView(el, caretBottom) {
+    const scroller = el.closest(".sheet") || document.scrollingElement;
+    const bar = el.closest(".sheet")?.querySelector(".sheet-bar");
+    const line = parseFloat(getComputedStyle(el).lineHeight) || 30;
+    const y = el.getBoundingClientRect().top + caretBottom;
+    const bottom = (window.visualViewport?.height ?? innerHeight) - 24;
+    const top = (bar ? bar.getBoundingClientRect().bottom : 0) + 24;
+    if (y > bottom) scroller.scrollTop += y - bottom;
+    else if (y - line < top) scroller.scrollTop -= top - (y - line);
   }
   const growAll = (root) => root.querySelectorAll("textarea.autogrow").forEach(grow);
 
@@ -454,7 +477,7 @@
     }
   });
 
-  document.addEventListener("input", (e) => { if (e.target.matches("textarea.autogrow")) grow(e.target); });
+  document.addEventListener("input", (e) => { if (e.target.matches("textarea.autogrow")) grow(e.target, true); });
   document.addEventListener("keydown", (e) => {
     // Cmd/Ctrl+Enter saves, Esc cancels.
     const form = e.target.closest?.("form.inline-edit, form.compose");
