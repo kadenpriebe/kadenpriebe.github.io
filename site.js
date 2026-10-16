@@ -101,9 +101,9 @@ document.addEventListener("click", (e) => {
 });
 
 // Edit / Delete buttons, only rendered for the owner. owner.js handles the clicks.
-const ownerCtl = (attrs, { del = true, label = "Edit" } = {}) =>
+const ownerCtl = (attrs, { del = true, label = "Edit", extra = "" } = {}) =>
   OWNER
-    ? `<div class="owner-ctl"><button type="button" data-act="edit" ${attrs}>${label}</button>${
+    ? `<div class="owner-ctl"><button type="button" data-act="edit" ${attrs}>${label}</button>${extra}${
         del ? `<button type="button" data-act="delete" ${attrs}>Delete</button>` : ""
       }</div>`
     : "";
@@ -167,15 +167,33 @@ function setupThemeToggle(btn) {
 // ─── List item templates ─────────────────────────────────────────────
 
 // The Writing page passes an excerpt (so there's something to collapse); the homepage doesn't.
-const postItem = (p, excerpt = "") => `
-  <li class="row${excerpt ? " foldable" : ""}">
+// A post's TL;DR, if it has one, is shown instead of the excerpt.
+const postItem = (p, excerpt) => {
+  const summary =
+    excerpt === undefined ? "" :
+    p.tldr ? `<p class="excerpt"><span class="tldr-tag">TL;DR</span> ${esc(plainText(p.tldr))}</p>` :
+    excerpt ? `<p class="excerpt">${esc(excerpt)}</p>` : "";
+  return `
+  <li class="row${summary ? " foldable" : ""}">
     <div class="row-main">
       <a href="post.html?p=${encodeURIComponent(p.slug)}">${esc(p.title)}</a>
-      ${excerpt ? `<p class="excerpt">${esc(excerpt)}</p>` : ""}
+      ${summary}
     </div>
     <time>${fmtDate(p.date, { month: "short", day: "numeric" })}</time>
-    ${excerpt ? FOLD : ""}
+    ${summary ? FOLD : ""}
   </li>`;
+};
+
+// The TL;DR box on drafts and posts. Markdown and tangents work inside it.
+const tldrBox = (text) => (text ? `<div class="tldr"><span class="tldr-tag">TL;DR</span><div class="tldr-body">${md(text)}</div></div>` : "");
+
+// Markdown as plain text, without tangents.
+function plainText(text) {
+  const div = document.createElement("div");
+  div.innerHTML = md(text || "");
+  div.querySelectorAll(".tangent").forEach((t) => t.remove());
+  return div.textContent.replace(/\s+/g, " ").trim();
+}
 
 // First paragraph of a post as plain text, without tangents, cut to about 220 characters.
 function excerptOf(text) {
@@ -217,11 +235,15 @@ const shapedItem = (b) => `
   </li>`;
 
 const noteItem = (n) => `
-  <li class="note foldable" data-i="${n._i}">
+  <li class="note foldable${n.title ? " has-title" : ""}" data-i="${n._i}">
     <time>${fmtDate(n.date)}</time>${FOLD}
+    ${n.title ? `<h3 class="note-title">${esc(n.title)}</h3>` : ""}
+    ${tldrBox(n.tldr)}
     <div class="note-body">${md(n.text)}</div>
     ${extLink(n.link)}
-    ${ownerCtl(`data-kind="note" data-i="${n._i}"`)}
+    ${ownerCtl(`data-kind="note" data-i="${n._i}"`, {
+      extra: `<button type="button" data-act="publish" data-kind="note" data-i="${n._i}">Publish to Writing</button>`,
+    })}
   </li>`;
 
 // ─── Collapse all (Writing, Reading, Drafts) ─────────────────────────
@@ -288,7 +310,7 @@ const pages = {
 
       <section>
         <h2><a href="writing.html">Writing</a></h2>
-        ${posts.length ? `<ul class="rows">${posts.slice(0, 1).map(postItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
+        ${posts.length ? `<ul class="rows">${posts.slice(0, 1).map((p) => postItem(p)).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
         ${more(posts.length, "writing.html", `See all ${posts.length} posts`)}
       </section>
 
@@ -316,7 +338,7 @@ const pages = {
     main.innerHTML = `
       <h1>Writing</h1>
       ${lede("writing")}
-      ${posts.some((p) => excerpts[p.slug]) ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
+      ${posts.some((p) => p.tldr || excerpts[p.slug]) ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
       ${Object.keys(years).sort().reverse().map((y) => `
         <section>
           <h2>${y}</h2>
@@ -343,6 +365,7 @@ const pages = {
           ${extLink(post.link)}
           ${ownerCtl(`data-kind="post" data-slug="${esc(post.slug)}"`)}
         </header>
+        ${tldrBox(post.tldr)}
         <div class="prose">${md(body)}</div>
       </article>
       <p class="back"><a href="writing.html">← All writing</a></p>`;

@@ -110,6 +110,7 @@
     `<textarea name="${name}" rows="${rows}" class="autogrow ${cls}" placeholder="${esc(ph)}">${esc(v)}</textarea>`;
   const linkInput = (v) => label("Link (optional)", input("link", v, 'placeholder="https://" inputmode="url"'));
   const dateInput = (v) => label("Date", input("date", v, 'type="date"'));
+  const tldrInput = (v) => label("TL;DR (optional)", area("tldr", v, 2, "The short version, in a sentence or two"));
   const tangentTool = `<div class="write-tools">
     <button type="button" class="btn-ghost" data-act="tangent" title="Wrap the selected text in a tangent (⌘⇧9)">+ tangent</button>
     <span>or type ((like this)). Readers tap to open it.</span></div>`;
@@ -119,19 +120,21 @@
       noun: "post",
       fields: (v, editing) =>
         input("title", v.title, 'class="title-input" placeholder="Title"') +
+        tldrInput(v.tldr) +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
         area("body", v.body, 14, "Start writing… (markdown works)", "body-input") + tangentTool,
-      async create({ title, body, link }) {
+      async create({ title, tldr, body, link }) {
         const slug = slugify(title);
         if (!slug) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("Write something first.");
         const posts = await readFile("content/posts.json");
         if (JSON.parse(posts.text).some((p) => p.slug === slug)) throw new Error(`You already have a post called “${title}”. Pick a different title.`);
         await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
-        await updateJSON("content/posts.json", (l) => void l.unshift(setOrDrop({ slug, title: title.trim(), date: today() }, "link", cleanLink(link))), `Post: ${title}`);
+        const entry = setOrDrop(setOrDrop({ slug, title: title.trim(), date: today() }, "tldr", tldr.trim()), "link", cleanLink(link));
+        await updateJSON("content/posts.json", (l) => void l.unshift(entry), `Post: ${title}`);
         return `post.html?p=${slug}`;
       },
-      async save(ref, { title, date, link, body }) {
+      async save(ref, { title, tldr, date, link, body }) {
         if (!title.trim()) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("A post can't be empty. Use Delete instead.");
         const path = `content/posts/${ref.slug}.md`;
@@ -142,6 +145,7 @@
           if (!p) throw new Error(CHANGED);
           p.title = title.trim();
           p.date = date || p.date;
+          setOrDrop(p, "tldr", tldr.trim());
           setOrDrop(p, "link", cleanLink(link));
         }, `Edit post: ${title}`);
       },
@@ -156,19 +160,36 @@
     note: {
       noun: "draft",
       fields: (v, editing) =>
+        input("title", v.title, 'class="title-input" placeholder="Title (optional)"') +
+        tldrInput(v.tldr) +
         area("text", v.text, 5, "What's on your mind?", "body-input") + tangentTool +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>`,
-      async create({ text, link }) {
-        if (!text.trim()) throw new Error("Write something first.");
-        await updateJSON("content/notes.json", (l) => void l.unshift(setOrDrop({ date: today(), text: text.trim() }, "link", cleanLink(link))), "Draft");
+      // Title and TL;DR come first in the file so they read in order in notes.json.
+      build(base, f) {
+        if (!f.text.trim()) throw new Error("Write something first.");
+        const { title, tldr, text, link, ...rest } = base;
+        const item = setOrDrop(setOrDrop(rest, "title", f.title.trim()), "tldr", f.tldr.trim());
+        item.text = f.text.trim();
+        return setOrDrop(item, "link", cleanLink(f.link));
+      },
+      async create(f) {
+        const item = this.build({ date: today() }, f);
+        await updateJSON("content/notes.json", (l) => void l.unshift(item), item.title ? `Draft: ${item.title}` : "Draft");
         return "notes.html";
       },
-      async save(ref, { date, text, link }) {
-        if (!text.trim()) throw new Error("A draft can't be empty. Use Delete instead.");
-        const next = setOrDrop({ ...ref.original, date: date || ref.original.date, text: text.trim() }, "link", cleanLink(link));
+      async save(ref, f) {
+        const next = this.build({ ...ref.original, date: f.date || ref.original.date }, f);
         await changeItem("content/notes.json", ref.index, ref.original, next, "Edit draft");
       },
       remove: (ref) => changeItem("content/notes.json", ref.index, ref.original, null, "Delete draft"),
+      // Turn a draft into a post on Writing, then take it off Drafts.
+      async publish(ref, f) {
+        const notes = await readFile("content/notes.json");
+        if (JSON.stringify(JSON.parse(notes.text)[ref.index]) !== JSON.stringify(ref.original)) throw new Error(CHANGED);
+        const page = await KINDS.post.create(f);
+        await changeItem("content/notes.json", ref.index, ref.original, null, `Published draft: ${f.title.trim()}`);
+        return page;
+      },
     },
 
     read: {
@@ -427,22 +448,29 @@
     if (!$(".sheet")) document.body.classList.remove("sheet-open");
   }
 
-  function compose(kind) {
+  function compose(kind, values = {}, opts = {}) {
     const titles = { post: "New post", note: "New draft", read: "New reading", shaped: "A book that shaped you" };
     const el = sheet(`
       <form class="compose">
         <div class="sheet-bar">
           <button type="button" class="btn-ghost" data-act="cancel">Cancel</button>
-          <span class="sheet-title">${titles[kind]}</span>
+          <span class="sheet-title">${opts.heading || titles[kind]}</span>
           <button type="submit" class="btn-primary">Publish</button>
         </div>
-        <div class="sheet-body">${KINDS[kind].fields({}, false)}</div>
+        <div class="sheet-body">${KINDS[kind].fields(values, false)}</div>
         <p class="form-msg" role="status"></p>
       </form>`);
     const form = $("form", el);
-    formRefs.set(form, { kind, mode: "new", sheet: el });
+    formRefs.set(form, { kind, mode: opts.mode || "new", ref: opts.ref, sheet: el });
     growAll(form);
     form.querySelector("input, textarea").focus();
+  }
+
+  // Opens the new-post sheet filled in from a draft. Publishing it moves the draft to Writing.
+  function publishDraft(btn) {
+    const { ref, values } = currentValues("note", btn);
+    const { title, tldr, link, text: body } = values;
+    compose("post", { title, tldr, link, body }, { mode: "publish", ref, heading: "Publish to Writing" });
   }
 
   // ─── Sign in / out ─────────────────────────────────────────────────
@@ -490,9 +518,11 @@
     e.preventDefault();
     const btn = $('button[type="submit"]', form);
     btn.disabled = true;
-    setMsg(form, info.mode === "new" ? "Publishing…" : "Saving…");
+    setMsg(form, info.mode === "edit" ? "Saving…" : "Publishing…");
     try {
-      if (info.mode === "new") {
+      if (info.mode === "publish") {
+        location.href = await KINDS.note.publish(info.ref, collect(form));
+      } else if (info.mode === "new") {
         const page = await KINDS[info.kind].create(collect(form));
         const here = document.body.dataset.page;
         const showsIt = { post: [], note: ["notes", "home"], read: ["reading", "home"], shaped: ["reading"] }[info.kind].includes(here);
@@ -515,6 +545,7 @@
     if (act === "tangent") addTangent(btn.closest("form"));
     else if (act === "new") compose(btn.dataset.kind);
     else if (act === "edit") openInline(btn);
+    else if (act === "publish") publishDraft(btn);
     else if (act === "delete") removeItem(btn);
     else if (act === "signout") {
       if (!confirm("Sign out of editing on this browser?")) return;
