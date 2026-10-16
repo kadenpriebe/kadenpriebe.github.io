@@ -304,6 +304,116 @@ function watchDrafts(main) {
   main.querySelectorAll("[data-view]").forEach((li) => io.observe(li));
 }
 
+// ─── Drawings beside drafts and posts ────────────────────────────────
+// Made in the editor with "+ draw" (owner.js). Each drawing is pinned to the line of text
+// it starts next to: we find that text on the page and put the drawing beside it, so it
+// stays with its line when the text above changes. Where the screen is too narrow for the
+// margin it's in, it goes under that paragraph instead.
+
+const sketchAttr = (list) => (list && list.length ? ` data-sketches="${esc(JSON.stringify(list))}"` : "");
+const nums = (v = "") => (Array.isArray(v) ? v : String(v).split(" ").map(Number));
+
+// A pen stroke, smoothed by curving through the midpoints between the points you drew.
+function penPath(p) {
+  if (p.length < 6) return `M${p[0]} ${p[1]}L${p[p.length - 2]} ${p[p.length - 1]}`;
+  let d = `M${p[0]} ${p[1]}`;
+  for (let i = 2; i < p.length - 2; i += 2) d += `Q${p[i]} ${p[i + 1]} ${(p[i] + p[i + 2]) / 2} ${(p[i + 1] + p[i + 3]) / 2}`;
+  return d + `L${p[p.length - 2]} ${p[p.length - 1]}`;
+}
+function arrowHead(x1, y1, x2, y2) {
+  const a = Math.atan2(y2 - y1, x2 - x1), end = (t) => `${(x2 - 13 * Math.cos(a + t)).toFixed(1)} ${(y2 - 13 * Math.sin(a + t)).toFixed(1)}`;
+  return `M${end(0.45)}L${x2} ${y2}L${end(-0.45)}`;
+}
+function sketchSVG(s) {
+  const ink = (it) => (it.c === "a" ? ' class="ink-a"' : "");
+  const parts = (s.items || []).map((it) => {
+    if (it.pen) return `<path${ink(it)} d="${penPath(nums(it.pen))}"/>`;
+    const seg = it.line || it.arrow;
+    if (seg) {
+      const [a, b, c, d] = nums(seg);
+      return `<path${ink(it)} d="M${a} ${b}L${c} ${d}${it.arrow ? arrowHead(a, b, c, d) : ""}"/>`;
+    }
+    if (it.text) { const [x, y] = nums(it.at); return `<text${ink(it)} x="${x}" y="${y}">${esc(it.text)}</text>`; }
+    return "";
+  });
+  return `<svg viewBox="0 0 ${s.w} ${s.h}" width="${s.w}" height="${s.h}" aria-hidden="true">${parts.join("")}</svg>`;
+}
+
+// Finds `quote` in the visible text of `root` (ignoring case and spacing) and returns the
+// text node and offset where it starts. `nth` picks a later match when it appears twice.
+const normText = (t = "") => t.replace(/\s+/g, " ").trim().toLowerCase();
+function textPoint(root, quote, nth = 0) {
+  const want = normText(quote);
+  if (!want) return null;
+  let flat = "";
+  const map = [];
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.parentElement.closest(".sketch") || !n.parentElement.getClientRects().length ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  for (let n; (n = walk.nextNode()); ) {
+    for (let i = 0; i < n.data.length; i++) {
+      const ch = /\s/.test(n.data[i]) ? " " : n.data[i].toLowerCase();
+      if (ch === " " && (!flat || flat.endsWith(" "))) continue;
+      flat += ch;
+      map.push([n, i]);
+    }
+  }
+  let at = -1;
+  for (let k = 0; k <= nth; k++) { const next = flat.indexOf(want, at + 1); if (next < 0) break; at = next; }
+  return at < 0 ? null : map[at];
+}
+function pointTop([node, i]) {
+  const r = document.createRange();
+  r.setStart(node, i);
+  r.setEnd(node, i + 1);
+  return (r.getClientRects()[0] || r.getBoundingClientRect()).top;
+}
+
+function placeSketches(body) {
+  body.querySelectorAll(":scope > .sketch").forEach((el) => el.remove());
+  if (!body.getClientRects().length) return; // hidden (a collapsed draft)
+  const list = JSON.parse(body.dataset.sketches || "[]");
+  const box = body.getBoundingClientRect(), room = document.documentElement.clientWidth;
+  const placed = list.map((s) => {
+    const left = s.xr != null ? box.width + s.xr : s.x || 0;
+    const el = document.createElement("div");
+    el.className = "sketch";
+    el.innerHTML = sketchSVG(s);
+    return { s, el, left, fits: box.left + left >= 4 && box.left + left + s.w <= room - 4 };
+  });
+  const find = (s) => {
+    for (const a of s.anchors || []) { const at = textPoint(body, a.q, a.n); if (at) return { at, a }; }
+    return null;
+  };
+  // Ones going under a paragraph first, since they push the text below them down.
+  for (const p of placed.filter((p) => !p.fits)) {
+    const hit = find(p.s);
+    const block = hit && [...body.children].find((c) => c.contains(hit.at[0]));
+    p.el.classList.add("inline");
+    p.el.style.width = p.s.w + "px";
+    block ? block.after(p.el) : body.append(p.el);
+  }
+  const top = body.getBoundingClientRect().top;
+  for (const p of placed.filter((p) => p.fits)) {
+    const hit = find(p.s);
+    const y = hit ? pointTop(hit.at) - top + hit.a.dy : p.s.y || 0;
+    p.el.style.cssText = `left:${p.left}px;top:${y}px;width:${p.s.w}px;height:${p.s.h}px`;
+    body.append(p.el);
+  }
+}
+
+// Re-place them whenever the text around them moves: a draft opening, fonts loading, the
+// window resizing.
+const sketchWatch = "ResizeObserver" in window ? new ResizeObserver((es) => es.forEach((e) => placeSketches(e.target))) : null;
+function drawSketches(root) {
+  root.querySelectorAll("[data-sketches]").forEach((b) => (sketchWatch ? sketchWatch.observe(b) : placeSketches(b)));
+}
+let sketchTimer;
+addEventListener("resize", () => {
+  clearTimeout(sketchTimer);
+  sketchTimer = setTimeout(() => document.querySelectorAll("main [data-sketches]").forEach(placeSketches), 100);
+});
+
 // ─── List item templates ─────────────────────────────────────────────
 
 // The Writing page passes an excerpt (so there's something to collapse); the homepage doesn't.
@@ -382,7 +492,7 @@ const noteItem = (n) => `
     ${metaLine(n.date, readTime(n.text), n.id && `/drafts/${n.id}`)}${FOLD}
     ${n.title ? `<h3 class="note-title">${esc(n.title)}</h3>` : ""}
     ${tldrBox(n.tldr)}
-    <div class="note-body">${md(n.text)}</div>
+    <div class="note-body"${sketchAttr(n.sketches)}>${md(n.text)}</div>
     ${extLink(n.link)}
     ${tagList(n.tags)}
     ${ownerCtl(`data-kind="note" data-i="${n._i}"`, {
@@ -515,7 +625,7 @@ const pages = {
           ${ownerCtl(`data-kind="post" data-slug="${esc(post.slug)}"`)}
         </header>
         ${tldrBox(post.tldr)}
-        <div class="prose">${md(body)}</div>
+        <div class="prose"${sketchAttr(post.sketches)}>${md(body)}</div>
       </article>
       <p class="back"><a href="writing.html">← All writing</a></p>`;
   },
@@ -657,6 +767,7 @@ window.siteRender = async () => {
     firstRender = false;
     if (GOATCOUNTER) fillViews(main);
     watchDrafts(main);
+    drawSketches(main);
     document.dispatchEvent(new CustomEvent("site:rendered", { detail: { page } }));
   } catch (err) {
     const fileHint =

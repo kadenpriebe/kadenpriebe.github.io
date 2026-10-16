@@ -112,10 +112,11 @@
   const dateInput = (v) => label("Date", input("date", v, 'type="date"'));
   const tldrInput = (v) => label("TL;DR (optional)", area("tldr", v, 2, "The short version, in a sentence or two"));
   // Buttons under the writing box. They act on whichever box you were last typing in.
-  const writeTools = (tangent = true) => `<div class="write-tools">
+  const writeTools = (tangent = true, draw = false) => `<div class="write-tools">
     <button type="button" class="btn-ghost" data-act="link" title="Link the selected text (⌘K)">+ link</button>
     <button type="button" class="btn-ghost" data-act="attach" title="Add images, video, PDFs or any file">+ attach</button>
     ${tangent ? `<button type="button" class="btn-ghost" data-act="tangent" title="Wrap the selected text in a tangent (⌘⇧9)">+ tangent</button>` : ""}
+    ${draw ? `<button type="button" class="btn-ghost" data-act="draw" title="Pick an area beside your text and draw in it">+ draw</button>` : ""}
     <input type="file" class="attach-input" multiple hidden>
     <span>${tangent ? "Type ((like this)) for a tangent. " : ""}You can paste or drop files in too.</span></div>`;
 
@@ -123,6 +124,11 @@
   const tagsInput = (tags = []) =>
     label("Tags (comma-separated)", input("tags", tags.join(", "), 'class="tags-input" placeholder="philosophy, biotech"')) +
     `<div class="tag-suggest"></div>`;
+  // Drafts and posts can have drawings beside the text (see "Drawing beside your writing").
+  const sketchHost = (inner) => `<div class="sketch-host">${inner}<div class="sketch-layer"></div></div>`;
+  const sketchField = (v) => `<textarea name="sketches" hidden>${esc(JSON.stringify(v.sketches || []))}</textarea>`;
+  const parseSketches = (s) => { try { const l = JSON.parse(s || "[]"); return l.length ? l : null; } catch { return null; } };
+
   const parseTags = (s = "") => [...new Set(s.split(",").map((t) => t.trim().replace(/^#/, "").replace(/\s+/g, " ").toLowerCase()).filter(Boolean))];
   const setTags = (obj, s) => setOrDrop(obj, "tags", parseTags(s).length && parseTags(s));
 
@@ -134,8 +140,8 @@
         tldrInput(v.tldr) +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
         tagsInput(v.tags) +
-        area("body", v.body, 14, "Start writing… (markdown works)", "body-input write-target") + writeTools(),
-      async create({ title, tldr, body, link, tags }) {
+        sketchHost(area("body", v.body, 14, "Start writing… (markdown works)", "body-input write-target")) + writeTools(true, true) + sketchField(v),
+      async create({ title, tldr, body, link, tags, sketches }) {
         const slug = slugify(title);
         if (!slug) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("Write something first.");
@@ -143,10 +149,11 @@
         if (JSON.parse(posts.text).some((p) => p.slug === slug)) throw new Error(`You already have a post called “${title}”. Pick a different title.`);
         await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
         const entry = setTags(setOrDrop(setOrDrop({ slug, title: title.trim(), date: today() }, "tldr", tldr.trim()), "link", cleanLink(link)), tags);
+        setOrDrop(entry, "sketches", parseSketches(sketches));
         await updateJSON("content/posts.json", (l) => void l.unshift(entry), `Post: ${title}`);
         return `post.html?p=${slug}`;
       },
-      async save(ref, { title, tldr, date, link, tags, body }) {
+      async save(ref, { title, tldr, date, link, tags, body, sketches }) {
         if (!title.trim()) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("A post can't be empty. Use Delete instead.");
         const path = `content/posts/${ref.slug}.md`;
@@ -160,6 +167,7 @@
           setOrDrop(p, "tldr", tldr.trim());
           setOrDrop(p, "link", cleanLink(link));
           setTags(p, tags);
+          setOrDrop(p, "sketches", parseSketches(sketches));
         }, `Edit post: ${title}`);
       },
       async remove(ref) {
@@ -175,15 +183,16 @@
       fields: (v, editing) =>
         input("title", v.title, 'class="title-input" placeholder="Title (optional)"') +
         tldrInput(v.tldr) +
-        area("text", v.text, 5, "What's on your mind?", "body-input write-target") + writeTools() +
+        sketchHost(area("text", v.text, 5, "What's on your mind?", "body-input write-target")) + writeTools(true, true) + sketchField(v) +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
         tagsInput(v.tags),
       // Title and TL;DR come first in the file so they read in order in notes.json.
       build(base, f) {
         if (!f.text.trim()) throw new Error("Write something first.");
-        const { title, tldr, text, link, tags, ...rest } = base;
+        const { title, tldr, text, sketches, link, tags, ...rest } = base;
         const item = setOrDrop(setOrDrop(rest, "title", f.title.trim()), "tldr", f.tldr.trim());
         item.text = f.text.trim();
+        setOrDrop(item, "sketches", parseSketches(f.sketches));
         return setTags(setOrDrop(item, "link", cleanLink(f.link)), f.tags);
       },
       async create(f) {
@@ -398,6 +407,7 @@
     if (kind === "about") { target.innerHTML = ""; target.append(form); }
     else target.replaceWith(form);
     growAll(form);
+    initSketches(form);
     fillTagSuggest(form);
     (form.querySelector(".title-input, .body-input, input, textarea"))?.focus();
   }
@@ -461,6 +471,7 @@
     return el;
   }
   function closeSheet(el) {
+    stopSketching();
     el.remove();
     if (!$(".sheet")) document.body.classList.remove("sheet-open");
   }
@@ -480,6 +491,7 @@
     const form = $("form", el);
     formRefs.set(form, { kind, mode: opts.mode || "new", ref: opts.ref, sheet: el });
     growAll(form);
+    initSketches(form);
     fillTagSuggest(form);
     form.querySelector("input, textarea").focus();
   }
@@ -487,8 +499,8 @@
   // Opens the new-post sheet filled in from a draft. Publishing it moves the draft to Writing.
   function publishDraft(btn) {
     const { ref, values } = currentValues("note", btn);
-    const { title, tldr, link, tags, text: body } = values;
-    compose("post", { title, tldr, link, tags, body }, { mode: "publish", ref, heading: "Publish to Writing" });
+    const { title, tldr, link, tags, sketches, text: body } = values;
+    compose("post", { title, tldr, link, tags, sketches, body }, { mode: "publish", ref, heading: "Publish to Writing" });
   }
 
   // ─── Sign in / out ─────────────────────────────────────────────────
@@ -534,6 +546,7 @@
     const info = formRefs.get(form);
     if (!info) return;
     e.preventDefault();
+    if (sketchForms.has(form)) { finishSketch(form); pinSketches(form); }
     if (uploading.get(form)) return setMsg(form, "Wait for your files to finish uploading.", "err");
     const btn = $('button[type="submit"]', form);
     btn.disabled = true;
@@ -564,6 +577,7 @@
     if (act === "tangent") addTangent(btn.closest("form"));
     else if (act === "link") openLinkPanel(btn.closest("form"));
     else if (act === "attach") $(".attach-input", btn.closest("form")).click();
+    else if (act === "draw") startPick(btn.closest("form"));
     else if (act === "tag") toggleTag(btn);
     else if (act === "new") compose(btn.dataset.kind);
     else if (act === "edit") openInline(btn);
@@ -589,6 +603,7 @@
   document.addEventListener("mousedown", (e) => { if (e.target.closest('[data-act="tangent"], [data-act="link"], [data-act="attach"], [data-act="tag"]')) e.preventDefault(); });
   document.addEventListener("input", (e) => {
     if (e.target.matches("textarea.autogrow")) grow(e.target, true);
+    if (e.target.closest?.(".sketch-host")) relayout(e.target.closest("form"));
     if (e.target.matches(".tags-input")) markTags(e.target.closest("form"));
   });
   document.addEventListener("keydown", (e) => {
@@ -785,6 +800,334 @@
     e.preventDefault();
     ta.focus();
     attachFiles(ta.closest("form"), [...e.dataTransfer.files], ta);
+  });
+
+  // ─── Drawing beside your writing ───────────────────────────────────
+  // "+ draw" on a draft or post: drag out an area (the margin beside your text works best),
+  // then draw in it with a pen, straight lines, arrows or typed labels. Click a drawing to
+  // change or delete it. Each one is pinned to the line of text it starts next to, so it
+  // moves with that line as you write, and site.js puts it beside the same line on the page.
+
+  const sketchForms = new WeakMap(); // form → { host, ta, field, list, editing, … }
+  let stopActive = null; // ends whatever drawing mode is on
+
+  function initSketches(form) {
+    const host = $(".sketch-host", form);
+    if (!host) return;
+    const field = $('[name="sketches"]', form);
+    sketchForms.set(form, { host, ta: $("textarea", host), field, list: parseSketches(field.value) || [] });
+    layoutSketches(form);
+  }
+
+  // Measures where character k of the writing box sits, using an invisible copy of the box.
+  function measurer(ta) {
+    const cs = getComputedStyle(ta), m = document.createElement("div");
+    for (const p of ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing", "wordSpacing", "tabSize", "textIndent",
+      "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "boxSizing"]) m.style[p] = cs[p];
+    Object.assign(m.style, { position: "absolute", visibility: "hidden", pointerEvents: "none", left: "0", top: "0", width: ta.offsetWidth + "px",
+      borderStyle: "solid", borderColor: "transparent", whiteSpace: "pre-wrap", overflowWrap: "break-word" });
+    const before = document.createTextNode(""), mark = document.createElement("span");
+    m.append(before, mark);
+    ta.parentNode.append(m);
+    return {
+      top(k) { before.data = ta.value.slice(0, k); mark.textContent = ta.value[k] || "."; return ta.offsetTop + ta.clientTop + mark.offsetTop; },
+      done: () => m.remove(),
+    };
+  }
+
+  const leftOf = (s, W) => (s.xr != null ? W + s.xr : s.x || 0);
+  // Drawings in the right margin are measured from the text's right edge, so they stay
+  // beside it however wide the text is.
+  function setLeft(s, left, W) {
+    delete s.x; delete s.xr;
+    if (left >= W - 20) s.xr = Math.round(left - W);
+    else s.x = Math.round(left);
+  }
+  const nth = (text, part, n = 0) => {
+    let at = -1;
+    for (let k = 0; k <= n; k++) { const i = text.indexOf(part, at + 1); if (i < 0) break; at = i; }
+    return at;
+  };
+  const count = (text, part) => { let c = 0; for (let i = text.indexOf(part); part && i >= 0; i = text.indexOf(part, i + 1)) c++; return c; };
+
+  function layoutSketches(form) {
+    const st = sketchForms.get(form);
+    if (!st) return;
+    const layer = $(".sketch-layer", st.host), W = st.ta.offsetWidth, m = measurer(st.ta);
+    layer.innerHTML = "";
+    for (const s of st.list) {
+      const a = (s.anchors || []).find((a) => a.r && nth(st.ta.value, a.r, a.n) >= 0);
+      if (a) s._top = m.top(nth(st.ta.value, a.r, a.n)) + a.dy;
+      else s._top ??= s.y || 0; // its line was deleted: it stays put and is re-pinned when you save
+      const style = `left:${leftOf(s, W)}px;top:${s._top}px;width:${s.w}px;height:${s.h}px`;
+      if (s === st.editing) { st.editEl.style.cssText = style; continue; }
+      const el = document.createElement("div");
+      const left = leftOf(s, W);
+      el.className = "sketch" + (left < W && left + s.w > 0 ? " over-text" : "");
+      el.title = "Click to change this drawing";
+      el.style.cssText = style;
+      el.innerHTML = sketchSVG(s);
+      el._sketch = s;
+      el._form = form;
+      layer.append(el);
+    }
+    m.done();
+  }
+  const relayout = (form) => {
+    const st = sketchForms.get(form);
+    if (st && !st.raf) st.raf = requestAnimationFrame(() => { st.raf = 0; layoutSketches(form); });
+  };
+  const relayoutAll = () => document.querySelectorAll("form .sketch-host").forEach((h) => relayout(h.closest("form")));
+  addEventListener("resize", relayoutAll);
+  document.fonts?.ready.then(relayoutAll);
+
+  // Pins a drawing whose top is at y to the words at the start of the line beside it, and,
+  // in case those don't survive onto the page (say they're inside a link), to the start of
+  // that paragraph or list item too.
+  const plainOf = (text) => {
+    const d = document.createElement("div");
+    d.innerHTML = window.marked ? marked.parseInline(text) : esc(text);
+    return d.textContent.replace(/\s+/g, " ").trim();
+  };
+  function anchorsAt(st, y) {
+    const text = st.ta.value;
+    if (!text.trim()) return [];
+    const m = measurer(st.ta);
+    try {
+      // The visual line at y: the last character at or above it, then back to its line's start.
+      const lineStart = (k) => { const t = m.top(k); let a = 0, b = k; while (a < b) { const mid = (a + b) >> 1; m.top(mid) < t ? (a = mid + 1) : (b = mid); } return a; };
+      let lo = 0, hi = text.length - 1;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; m.top(mid) <= y ? (lo = mid) : (hi = mid - 1); }
+      let k = lineStart(lo);
+      // On a blank line, use the next line with words (or the last one, below the end).
+      while (k < text.length && /\s/.test(text[k])) k++;
+      if (k >= text.length) { k = text.length - 1; while (k > 0 && /\s/.test(text[k])) k--; k = lineStart(k); while (/\s/.test(text[k])) k++; }
+      const eol = (i) => { const e = text.indexOf("\n", i); return e < 0 ? text.length : e; };
+      const make = (i) => {
+        const r = text.slice(i, Math.min(eol(i), i + 40));
+        let rest = text.slice(i, eol(i));
+        if (!text.slice(text.lastIndexOf("\n", i - 1) + 1, i).trim()) rest = rest.replace(/^(?:(?:#{1,6}|>|[-*+]|\d+[.)])\s+)+/, "");
+        const q = plainOf(rest.split("((")[0]).slice(0, 40).trim();
+        return { r, q, n: count(text.slice(0, i), r), dy: Math.round(y - m.top(i)) };
+      };
+      let start = text.lastIndexOf("\n", k - 1) + 1;
+      while (start < k && /\s/.test(text[start])) start++;
+      return start === k ? [make(k)] : [make(k), make(start)];
+    } finally { m.done(); }
+  }
+
+  // Before saving: re-pin every drawing to the text now beside it, and store them.
+  function pinSketches(form) {
+    const st = sketchForms.get(form);
+    layoutSketches(form);
+    for (const s of st.list) { s.anchors = anchorsAt(st, s._top); s.y = Math.round(s._top); }
+    st.field.value = JSON.stringify(st.list.map(({ _top, ...s }) => s));
+  }
+
+  function sketchBar(html) {
+    const bar = document.createElement("div");
+    bar.className = "sketch-bar";
+    bar.innerHTML = html;
+    document.body.append(bar);
+    return bar;
+  }
+  const stopSketching = () => stopActive?.();
+  document.addEventListener("site:rendered", stopSketching);
+
+  // Step 1: drag out the area to draw in.
+  function startPick(form) {
+    const st = sketchForms.get(form);
+    if (!st) return;
+    stopSketching();
+    document.activeElement?.blur(); // so a stray Enter doesn't press "+ draw" again
+    const { host } = st, hb = host.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+    const L = Math.min(0, 8 - hb.left), R = Math.max(hb.width, vw - 8 - hb.left), T = -12;
+    const zone = document.createElement("div");
+    zone.className = "draw-zone";
+    zone.style.cssText = `left:${L}px;width:${R - L}px;top:${T}px;height:${host.offsetHeight + 172}px`;
+    const box = document.createElement("div");
+    box.className = "draw-box";
+    box.hidden = true;
+    zone.append(box);
+    host.append(zone);
+    const bar = sketchBar(`<span class="hint">Drag out an area beside your text to draw in</span><button type="button" data-tool="cancel">Cancel</button>`);
+
+    const stop = () => { zone.remove(); bar.remove(); stopActive = null; removeEventListener("keydown", onKey, true); document.removeEventListener("pointerdown", onDown, true); };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); stop(); } };
+    const onDown = (e) => { if (!zone.contains(e.target) && !bar.contains(e.target)) stop(); };
+    addEventListener("keydown", onKey, true);
+    document.addEventListener("pointerdown", onDown, true);
+    bar.addEventListener("click", (e) => { if (e.target.closest('[data-tool="cancel"]')) stop(); });
+    stopActive = stop;
+
+    let start = null;
+    const at = (e) => { const r = zone.getBoundingClientRect(); return [Math.max(0, Math.min(r.width, e.clientX - r.left)), Math.max(0, Math.min(r.height, e.clientY - r.top))]; };
+    const rect = (e) => {
+      const [x, y] = at(e), [x0, y0] = start;
+      return { left: Math.min(x, x0), top: Math.min(y, y0), w: Math.abs(x - x0), h: Math.abs(y - y0) };
+    };
+    zone.addEventListener("pointerdown", (e) => { e.preventDefault(); zone.setPointerCapture(e.pointerId); start = at(e); });
+    zone.addEventListener("pointermove", (e) => {
+      if (!start) return;
+      const r = rect(e);
+      box.hidden = false;
+      box.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.w}px;height:${r.h}px`;
+    });
+    zone.addEventListener("pointercancel", () => { start = null; box.hidden = true; });
+    zone.addEventListener("pointerup", (e) => {
+      if (!start) return;
+      let { left, top, w, h } = rect(e);
+      if (w < 30 || h < 30) { // a tap: a medium-sized area there
+        w = Math.min(240, zone.offsetWidth); h = 200;
+        left = Math.min(start[0], zone.offsetWidth - w); top = start[1];
+      }
+      stop();
+      const s = { w: Math.round(w), h: Math.round(h), items: [] };
+      setLeft(s, left + L, st.ta.offsetWidth);
+      s._top = Math.round(top + T);
+      st.list.push(s);
+      editSketch(form, s);
+    });
+  }
+
+  // Step 2: draw in it.
+  function editSketch(form, s) {
+    const st = sketchForms.get(form);
+    stopSketching();
+    st.editing = s;
+    const el = document.createElement("div");
+    el.className = "sketch editing";
+    st.editEl = el;
+    st.host.append(el);
+    layoutSketches(form); // places this one and takes its still copy away
+    let tool = "pen", color = "", cur = null;
+    const draw = () => {
+      const html = sketchSVG(cur ? { ...s, items: [...s.items, cur] } : s);
+      const svg = el.querySelector("svg");
+      svg ? (svg.outerHTML = html) : el.insertAdjacentHTML("afterbegin", html);
+    };
+    draw();
+    const bar = sketchBar(`
+      ${[["pen", "Pen"], ["line", "Line"], ["arrow", "Arrow"], ["text", "Text"]].map(([t, l]) => `<button type="button" data-tool="${t}"${t === tool ? ' class="on"' : ""}>${l}</button>`).join("")}
+      <span class="sep"></span>
+      <button type="button" class="swatch on" data-ink="" title="Ink" aria-label="Ink color"></button>
+      <button type="button" class="swatch a" data-ink="a" title="Accent" aria-label="Accent color"></button>
+      <span class="sep"></span>
+      <button type="button" data-tool="undo" title="Undo (⌘Z)">Undo</button>
+      <button type="button" data-tool="delete">Delete</button>
+      <button type="button" data-tool="done" class="done">Done</button>`);
+    const undo = () => { s.items.pop(); draw(); };
+
+    const pt = (e) => {
+      const r = el.getBoundingClientRect();
+      return [Math.round(Math.max(0, Math.min(s.w, e.clientX - r.left))), Math.round(Math.max(0, Math.min(s.h, e.clientY - r.top)))];
+    };
+    el.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".sketch-text")) return;
+      e.preventDefault();
+      const [x, y] = pt(e);
+      if (tool === "text") return typeAt(x, y);
+      el.setPointerCapture(e.pointerId);
+      cur = { [tool]: tool === "pen" ? [x, y] : [x, y, x, y], ...(color ? { c: color } : {}) };
+      draw();
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!cur) return;
+      for (const ev of e.getCoalescedEvents?.() || [e]) {
+        const [x, y] = pt(ev);
+        if (cur.pen) { const p = cur.pen; if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) >= 2) p.push(x, y); }
+        else { const p = cur.line || cur.arrow; p[2] = x; p[3] = y; }
+      }
+      draw();
+    });
+    const end = () => {
+      if (!cur) return;
+      const key = cur.pen ? "pen" : cur.line ? "line" : "arrow", p = cur[key];
+      if (key === "pen" || Math.hypot(p[2] - p[0], p[3] - p[1]) >= 4) s.items.push({ ...cur, [key]: p.join(" ") });
+      cur = null;
+      draw();
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+
+    function typeAt(x, y) {
+      const box = document.createElement("input");
+      box.className = "sketch-text" + (color ? " ink-a" : "");
+      box.style.cssText = `left:${x}px;top:${y - 13}px`;
+      box.placeholder = "Type, then Enter";
+      el.append(box);
+      box.focus();
+      let closed = false;
+      const close = (keep) => {
+        if (closed) return;
+        closed = true;
+        const t = box.value.trim();
+        box.remove();
+        if (keep && t) { s.items.push({ text: t, at: `${x} ${Math.min(s.h, y + 6)}`, ...(color ? { c: color } : {}) }); draw(); }
+      };
+      box.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); close(true); }
+        if (e.key === "Escape") { e.preventDefault(); close(false); }
+      });
+      box.addEventListener("blur", () => close(true));
+    }
+
+    bar.addEventListener("mousedown", (e) => e.preventDefault()); // keep a label you're typing open
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      el.querySelector(".sketch-text")?.blur();
+      if (b.dataset.ink !== undefined) {
+        color = b.dataset.ink;
+        bar.querySelectorAll("[data-ink]").forEach((x) => x.classList.toggle("on", x === b));
+        return;
+      }
+      const t = b.dataset.tool;
+      if (t === "undo") undo();
+      else if (t === "delete") finishSketch(form, true);
+      else if (t === "done") finishSketch(form);
+      else {
+        tool = t;
+        bar.querySelectorAll("[data-tool]").forEach((x) => x.classList.toggle("on", x === b));
+        el.classList.toggle("tool-text", t === "text");
+      }
+    });
+    const onKey = (e) => {
+      if (e.target.closest?.(".sketch-text")) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishSketch(form); }
+      else if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); undo(); }
+    };
+    // Clicking anywhere else (your text, Save) finishes the drawing first.
+    const onDown = (e) => { if (!el.contains(e.target) && !bar.contains(e.target)) finishSketch(form); };
+    addEventListener("keydown", onKey, true);
+    document.addEventListener("pointerdown", onDown, true);
+    st.bar = bar;
+    st.cleanup = () => { removeEventListener("keydown", onKey, true); document.removeEventListener("pointerdown", onDown, true); };
+    stopActive = () => finishSketch(form);
+  }
+
+  function finishSketch(form, remove = false) {
+    const st = sketchForms.get(form);
+    const s = st?.editing;
+    if (!s) return;
+    st.editEl.querySelector(".sketch-text")?.blur();
+    st.editing = null;
+    st.editEl.remove();
+    st.bar.remove();
+    st.cleanup();
+    stopActive = null;
+    if (remove || !s.items.length) st.list.splice(st.list.indexOf(s), 1);
+    if (document.contains(st.host)) pinSketches(form);
+  }
+
+  // Click a drawing in the editor to change it.
+  // (If another drawing was open, finishing it has just redrawn these, so go by what was hit.)
+  document.addEventListener("pointerdown", (e) => {
+    const el = e.target.closest?.(".sketch");
+    if (!el?._sketch) return;
+    e.preventDefault();
+    editSketch(el._form, el._sketch);
   });
 
   // ─── Tags ──────────────────────────────────────────────────────────

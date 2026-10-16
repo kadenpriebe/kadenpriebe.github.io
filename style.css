@@ -517,3 +517,79 @@ body.sheet-open { overflow: hidden; }
 .ext { display: inline-block; margin-top: 6px; font: 14px/1.4 var(--mono); color: var(--accent); text-decoration: none; }
 .ext:hover { text-decoration: underline; }
 .post-head .ext { margin: 8px 0 0 16px; }
+
+/* ─── Drawings beside drafts and posts ─── */
+[data-sketches], .sketch-host { position: relative; }
+.sketch { position: absolute; color: var(--text); pointer-events: none; }
+.sketch svg { display: block; overflow: visible; }
+.sketch path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sketch text { fill: currentColor; font: italic 17px var(--serif); }
+.sketch path.ink-a { stroke: var(--accent); }
+.sketch text.ink-a { fill: var(--accent); }
+/* Too narrow for the margin: under the paragraph instead, shrunk to fit. */
+.sketch.inline { position: static; max-width: 100%; margin: 12px 0; }
+.sketch.inline svg { width: 100%; height: auto; }
+main.collapsed .note.foldable:not(.open) .sketch { display: none; }
+
+/* In the editor */
+.sketch-host { margin-top: 16px; }
+.sketch-host > textarea { display: block; margin-top: 0; }
+.sketch-layer { position: absolute; inset: 0; pointer-events: none; }
+.sketch-layer .sketch { pointer-events: auto; cursor: pointer; border-radius: 4px; }
+.sketch-layer .sketch:hover { outline: 1px dashed var(--muted); }
+/* One drawn over your words only catches clicks on its lines, so you can still click the text. */
+.sketch-layer .sketch.over-text { pointer-events: none; }
+.sketch-layer .sketch.over-text svg * { pointer-events: visiblePainted; }
+.draw-zone { position: absolute; z-index: 5; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.draw-box { position: absolute; pointer-events: none; }
+.draw-box, .sketch.editing {
+  outline: 1.5px dashed var(--accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.sketch.editing { z-index: 6; pointer-events: auto; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sketch.editing.tool-text { cursor: text; }
+.sketch-text {
+  position: absolute;
+  width: 14em;
+  height: 26px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  outline: 1px dashed var(--muted);
+  background: var(--bg);
+  font: italic 17px/26px var(--serif);
+}
+.sketch-text.ink-a { color: var(--accent); }
+.sketch-text:focus { border: none; }
+.sketch-bar {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  font: 13px/1 var(--mono);
+}
+.sketch-bar button { padding: 9px 12px; border: none; border-radius: 8px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+.sketch-bar button:hover { color: var(--text); }
+.sketch-bar button.on { background: var(--tag-bg); color: var(--text); }
+.sketch-bar button.done { background: var(--text); color: var(--bg); }
+.sketch-bar button[data-tool="delete"]:hover { color: var(--danger); }
+.sketch-bar .swatch { padding: 9px 8px; }
+.sketch-bar .swatch::before { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--text); }
+.sketch-bar .swatch.a::before { background: var(--accent); }
+.sketch-bar .swatch.on { box-shadow: inset 0 0 0 1.5px var(--muted); }
+.sketch-bar .sep { align-self: stretch; width: 1px; margin: 4px 4px; background: var(--line); }
+.sketch-bar .hint { padding: 0 10px; color: var(--muted); }
