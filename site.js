@@ -326,14 +326,15 @@ function arrowHead(x1, y1, x2, y2) {
 }
 function sketchSVG(s) {
   const ink = (it) => (it.c === "a" ? ' class="ink-a"' : "");
-  const parts = (s.items || []).map((it) => {
-    if (it.pen) return `<path${ink(it)} d="${penPath(nums(it.pen))}"/>`;
+  const parts = (s.items || []).map((it, k) => {
+    const attrs = `${ink(it)} data-k="${k}"`;
+    if (it.pen) return `<path${attrs} d="${penPath(nums(it.pen))}"/>`;
     const seg = it.line || it.arrow;
     if (seg) {
       const [a, b, c, d] = nums(seg);
-      return `<path${ink(it)} d="M${a} ${b}L${c} ${d}${it.arrow ? arrowHead(a, b, c, d) : ""}"/>`;
+      return `<path${attrs} d="M${a} ${b}L${c} ${d}${it.arrow ? arrowHead(a, b, c, d) : ""}"/>`;
     }
-    if (it.text) { const [x, y] = nums(it.at); return `<text${ink(it)} x="${x}" y="${y}">${esc(it.text)}</text>`; }
+    if (it.text) { const [x, y] = nums(it.at); return `<text${attrs} x="${x}" y="${y}">${esc(it.text)}</text>`; }
     return "";
   });
   return `<svg viewBox="0 0 ${s.w} ${s.h}" width="${s.w}" height="${s.h}" aria-hidden="true">${parts.join("")}</svg>`;

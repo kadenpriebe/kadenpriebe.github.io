@@ -1000,7 +1000,7 @@
     st.editEl = el;
     st.host.append(el);
     layoutSketches(form); // places this one and takes its still copy away
-    let tool = "pen", color = "", cur = null;
+    let tool = "pen", color = "", cur = null, drag = null;
     const draw = () => {
       const html = sketchSVG(cur ? { ...s, items: [...s.items, cur] } : s);
       const svg = el.querySelector("svg");
@@ -1008,7 +1008,10 @@
     };
     draw();
     const bar = sketchBar(`
-      ${[["pen", "Pen"], ["line", "Line"], ["arrow", "Arrow"], ["text", "Text"]].map(([t, l]) => `<button type="button" data-tool="${t}"${t === tool ? ' class="on"' : ""}>${l}</button>`).join("")}
+      ${[["pen", "Pen", "Hold down and draw"], ["line", "Line", "Drag a straight line"], ["arrow", "Arrow", "Drag from the tail to the tip"],
+        ["text", "Text", "Click to add a label. Click a label to edit it, drag it to move it"],
+        ["move", "Move", "Drag a label, line or stroke to move it, or drag empty space to move the whole drawing. Click a label to edit it"]]
+        .map(([t, l, tip]) => `<button type="button" data-tool="${t}" title="${tip}"${t === tool ? ' class="on"' : ""}>${l}</button>`).join("")}
       <span class="sep"></span>
       <button type="button" class="swatch on" data-ink="" title="Ink" aria-label="Ink color"></button>
       <button type="button" class="swatch a" data-ink="a" title="Accent" aria-label="Accent color"></button>
@@ -1016,7 +1019,46 @@
       <button type="button" data-tool="undo" title="Undo (⌘Z)">Undo</button>
       <button type="button" data-tool="delete">Delete</button>
       <button type="button" data-tool="done" class="done">Done</button>`);
-    const undo = () => { s.items.pop(); draw(); };
+
+    // Undo steps back through what you've changed since opening the drawing (then, for one
+    // you'd drawn before, keeps taking off its last line).
+    const history = [];
+    const snap = () => history.push(JSON.stringify({ items: s.items, x: s.x, xr: s.xr, top: s._top }));
+    const undo = () => {
+      const h = history.pop();
+      if (!h) { s.items.pop(); return draw(); }
+      const o = JSON.parse(h);
+      s.items = o.items;
+      delete s.x; delete s.xr;
+      if (o.x != null) s.x = o.x;
+      if (o.xr != null) s.xr = o.xr;
+      if (o.top !== s._top) { s._top = o.top; s.anchors = anchorsAt(st, s._top); }
+      layoutSketches(form);
+      draw();
+    };
+
+    // Which line, stroke or label is under (x, y), topmost first.
+    const segDist = (x, y, a, b, c, d) => {
+      const l = (c - a) ** 2 + (d - b) ** 2, t = l ? Math.max(0, Math.min(1, ((x - a) * (c - a) + (y - b) * (d - b)) / l)) : 0;
+      return Math.hypot(x - a - t * (c - a), y - b - t * (d - b));
+    };
+    const hit = (x, y) => {
+      for (let k = s.items.length - 1; k >= 0; k--) {
+        const it = s.items[k];
+        if (it.text) {
+          const b = el.querySelector(`[data-k="${k}"]`)?.getBBox();
+          if (b && x >= b.x - 5 && x <= b.x + b.width + 5 && y >= b.y - 5 && y <= b.y + b.height + 5) return k;
+          continue;
+        }
+        const p = nums(it.pen || it.line || it.arrow);
+        if (p.length < 4 ? Math.hypot(x - p[0], y - p[1]) < 9 : p.slice(0, -2).some((_, j) => j % 2 === 0 && segDist(x, y, p[j], p[j + 1], p[j + 2], p[j + 3]) < 9)) return k;
+      }
+      return -1;
+    };
+    const shifted = (it, dx, dy) => {
+      const key = it.text ? "at" : it.pen ? "pen" : it.line ? "line" : "arrow";
+      return { ...it, [key]: nums(it[key]).map((v, j) => Math.round(v + (j % 2 ? dy : dx))).join(" ") };
+    };
 
     const pt = (e) => {
       const r = el.getBoundingClientRect();
@@ -1026,13 +1068,24 @@
       if (e.target.closest(".sketch-text")) return;
       e.preventDefault();
       const [x, y] = pt(e);
+      const k = tool === "text" || tool === "move" ? hit(x, y) : -1;
+      if (tool === "move" || k >= 0) {
+        el.setPointerCapture(e.pointerId);
+        drag = k >= 0 ? { k, from: [x, y], orig: s.items[k] }
+          : { box: true, from: [e.clientX, e.clientY], left: leftOf(s, st.ta.offsetWidth), top: s._top };
+        return;
+      }
       if (tool === "text") return typeAt(x, y);
       el.setPointerCapture(e.pointerId);
       cur = { [tool]: tool === "pen" ? [x, y] : [x, y, x, y], ...(color ? { c: color } : {}) };
       draw();
     });
     el.addEventListener("pointermove", (e) => {
-      if (!cur) return;
+      if (drag) return dragTo(e);
+      if (!cur) {
+        if (tool === "text" || tool === "move") el.style.cursor = hit(...pt(e)) >= 0 ? "grab" : "";
+        return;
+      }
       for (const ev of e.getCoalescedEvents?.() || [e]) {
         const [x, y] = pt(ev);
         if (cur.pen) { const p = cur.pen; if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) >= 2) p.push(x, y); }
@@ -1040,30 +1093,68 @@
       }
       draw();
     });
+    function dragTo(e) {
+      const box = drag.box, [x, y] = box ? [e.clientX, e.clientY] : pt(e);
+      const dx = x - drag.from[0], dy = y - drag.from[1];
+      if (!drag.moved) {
+        if (Math.hypot(dx, dy) < 3) return;
+        snap();
+        drag.moved = true;
+        el.style.cursor = "grabbing";
+      }
+      if (box) {
+        setLeft(s, drag.left + dx, st.ta.offsetWidth);
+        s._top = drag.top + dy;
+        el.style.left = drag.left + dx + "px";
+        el.style.top = s._top + "px";
+      } else {
+        s.items[drag.k] = shifted(drag.orig, dx, dy);
+        draw();
+      }
+    }
     const end = () => {
+      if (drag) {
+        const d = drag;
+        drag = null;
+        el.style.cursor = "";
+        if (d.box && d.moved) s.anchors = anchorsAt(st, s._top); // pinned to the text now beside it
+        if (!d.box && !d.moved && s.items[d.k].text) editLabel(d.k);
+        return;
+      }
       if (!cur) return;
       const key = cur.pen ? "pen" : cur.line ? "line" : "arrow", p = cur[key];
-      if (key === "pen" || Math.hypot(p[2] - p[0], p[3] - p[1]) >= 4) s.items.push({ ...cur, [key]: p.join(" ") });
+      if (key === "pen" || Math.hypot(p[2] - p[0], p[3] - p[1]) >= 4) { snap(); s.items.push({ ...cur, [key]: p.join(" ") }); }
       cur = null;
       draw();
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
 
-    function typeAt(x, y) {
+    // A new label at (x, y), or label k retyped (clear it to remove it).
+    const editLabel = (k) => { const [x, y] = nums(s.items[k].at); typeAt(x, y - 6, k); };
+    function typeAt(x, y, k = -1) {
+      const old = s.items[k];
       const box = document.createElement("input");
-      box.className = "sketch-text" + (color ? " ink-a" : "");
+      box.className = "sketch-text" + ((old ? old.c : color) ? " ink-a" : "");
       box.style.cssText = `left:${x}px;top:${y - 13}px`;
       box.placeholder = "Type, then Enter";
+      if (old) {
+        box.value = old.text;
+        el.querySelector(`[data-k="${k}"]`)?.setAttribute("visibility", "hidden");
+      }
       el.append(box);
       box.focus();
+      if (old) box.select();
       let closed = false;
       const close = (keep) => {
         if (closed) return;
         closed = true;
         const t = box.value.trim();
         box.remove();
-        if (keep && t) { s.items.push({ text: t, at: `${x} ${Math.min(s.h, y + 6)}`, ...(color ? { c: color } : {}) }); draw(); }
+        if (old) {
+          if (keep && t !== old.text) { snap(); t ? (s.items[k] = { ...old, text: t }) : s.items.splice(k, 1); }
+        } else if (keep && t) { snap(); s.items.push({ text: t, at: `${x} ${Math.min(s.h, y + 6)}`, ...(color ? { c: color } : {}) }); }
+        draw();
       };
       box.addEventListener("keydown", (e) => {
         e.stopPropagation();
@@ -1091,6 +1182,7 @@
         tool = t;
         bar.querySelectorAll("[data-tool]").forEach((x) => x.classList.toggle("on", x === b));
         el.classList.toggle("tool-text", t === "text");
+        el.classList.toggle("tool-move", t === "move");
       }
     });
     const onKey = (e) => {
