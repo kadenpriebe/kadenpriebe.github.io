@@ -221,7 +221,7 @@ function setupThemeToggle(btn) {
 // Viewer counts are kept by GoatCounter (goatcounter.com). Put your site code here, the
 // "kaden" in kaden.goatcounter.com, and turn on "Allow adding visitor counts on your
 // website" in its settings. Leave it empty and counts are simply not shown.
-const GOATCOUNTER = "";
+const GOATCOUNTER = "kaden";
 
 // About 230 words a minute, tangents included.
 function readTime(text = "") {
