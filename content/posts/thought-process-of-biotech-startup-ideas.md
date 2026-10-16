@@ -29,6 +29,7 @@ More notable points about things to take into consideration are what is just now
 So now you have automated research that will make data for a new customer class. 
 - But this just seems to be a saturated area. Not to say that you can't build on it. It's more like you have to come up with a complementary way of generating data, as opposed to just copying what someone else is doing ie finding your unique point in the vertical stack, as mentioned above. ((Peter Thiel on competition is for losers.))
 - AI is creating more drug candidates than what can be tested, so not only sellings data to AI labs, but also creating a way for pharma companies to test their drug candidates is how pharma is a customer. 
+- the government is also a customer
 
 In conclusion, given my interest in biotech, I'm inclined to build in a parallel data generation lane to other companies doing the same thing. 
 
