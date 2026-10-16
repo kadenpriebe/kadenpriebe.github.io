@@ -1,5 +1,5 @@
 // Owner tools: the + button, the compose sheet, and editing posts / drafts / reading /
-// About / homepage intro right on the page. Everything is saved to the GitHub repo
+// About / homepage intro right on the page, with links, attachments and tags. Everything is saved to the GitHub repo
 // with a personal access token that lives only in your browser (localStorage).
 //
 // Visitors never see any of it: without the token this file does nothing, except
@@ -111,9 +111,20 @@
   const linkInput = (v) => label("Link (optional)", input("link", v, 'placeholder="https://" inputmode="url"'));
   const dateInput = (v) => label("Date", input("date", v, 'type="date"'));
   const tldrInput = (v) => label("TL;DR (optional)", area("tldr", v, 2, "The short version, in a sentence or two"));
-  const tangentTool = `<div class="write-tools">
-    <button type="button" class="btn-ghost" data-act="tangent" title="Wrap the selected text in a tangent (⌘⇧9)">+ tangent</button>
-    <span>or type ((like this)). Readers tap to open it.</span></div>`;
+  // Buttons under the writing box. They act on whichever box you were last typing in.
+  const writeTools = (tangent = true) => `<div class="write-tools">
+    <button type="button" class="btn-ghost" data-act="link" title="Link the selected text (⌘K)">+ link</button>
+    <button type="button" class="btn-ghost" data-act="attach" title="Add images, video, PDFs or any file">+ attach</button>
+    ${tangent ? `<button type="button" class="btn-ghost" data-act="tangent" title="Wrap the selected text in a tangent (⌘⇧9)">+ tangent</button>` : ""}
+    <input type="file" class="attach-input" multiple hidden>
+    <span>${tangent ? "Type ((like this)) for a tangent. " : ""}You can paste or drop files in too.</span></div>`;
+
+  // Tags are typed comma-separated; your existing tags appear underneath to tap.
+  const tagsInput = (tags = []) =>
+    label("Tags (comma-separated)", input("tags", tags.join(", "), 'class="tags-input" placeholder="philosophy, biotech"')) +
+    `<div class="tag-suggest"></div>`;
+  const parseTags = (s = "") => [...new Set(s.split(",").map((t) => t.trim().replace(/^#/, "").replace(/\s+/g, " ").toLowerCase()).filter(Boolean))];
+  const setTags = (obj, s) => setOrDrop(obj, "tags", parseTags(s).length && parseTags(s));
 
   const KINDS = {
     post: {
@@ -122,19 +133,20 @@
         input("title", v.title, 'class="title-input" placeholder="Title"') +
         tldrInput(v.tldr) +
         `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
-        area("body", v.body, 14, "Start writing… (markdown works)", "body-input") + tangentTool,
-      async create({ title, tldr, body, link }) {
+        tagsInput(v.tags) +
+        area("body", v.body, 14, "Start writing… (markdown works)", "body-input write-target") + writeTools(),
+      async create({ title, tldr, body, link, tags }) {
         const slug = slugify(title);
         if (!slug) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("Write something first.");
         const posts = await readFile("content/posts.json");
         if (JSON.parse(posts.text).some((p) => p.slug === slug)) throw new Error(`You already have a post called “${title}”. Pick a different title.`);
         await writeFile(`content/posts/${slug}.md`, body.trim() + "\n", `Post: ${title}`);
-        const entry = setOrDrop(setOrDrop({ slug, title: title.trim(), date: today() }, "tldr", tldr.trim()), "link", cleanLink(link));
+        const entry = setTags(setOrDrop(setOrDrop({ slug, title: title.trim(), date: today() }, "tldr", tldr.trim()), "link", cleanLink(link)), tags);
         await updateJSON("content/posts.json", (l) => void l.unshift(entry), `Post: ${title}`);
         return `post.html?p=${slug}`;
       },
-      async save(ref, { title, tldr, date, link, body }) {
+      async save(ref, { title, tldr, date, link, tags, body }) {
         if (!title.trim()) throw new Error("Give the post a title.");
         if (!body.trim()) throw new Error("A post can't be empty. Use Delete instead.");
         const path = `content/posts/${ref.slug}.md`;
@@ -147,6 +159,7 @@
           p.date = date || p.date;
           setOrDrop(p, "tldr", tldr.trim());
           setOrDrop(p, "link", cleanLink(link));
+          setTags(p, tags);
         }, `Edit post: ${title}`);
       },
       async remove(ref) {
@@ -162,15 +175,16 @@
       fields: (v, editing) =>
         input("title", v.title, 'class="title-input" placeholder="Title (optional)"') +
         tldrInput(v.tldr) +
-        area("text", v.text, 5, "What's on your mind?", "body-input") + tangentTool +
-        `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>`,
+        area("text", v.text, 5, "What's on your mind?", "body-input write-target") + writeTools() +
+        `<div class="two">${linkInput(v.link)}${editing ? dateInput(v.date) : ""}</div>` +
+        tagsInput(v.tags),
       // Title and TL;DR come first in the file so they read in order in notes.json.
       build(base, f) {
         if (!f.text.trim()) throw new Error("Write something first.");
-        const { title, tldr, text, link, ...rest } = base;
+        const { title, tldr, text, link, tags, ...rest } = base;
         const item = setOrDrop(setOrDrop(rest, "title", f.title.trim()), "tldr", f.tldr.trim());
         item.text = f.text.trim();
-        return setOrDrop(item, "link", cleanLink(f.link));
+        return setTags(setOrDrop(item, "link", cleanLink(f.link)), f.tags);
       },
       async create(f) {
         const item = this.build({ date: today() }, f);
@@ -201,7 +215,8 @@
           `<div class="two">${label("Author", input("author", v.author))}${label("Type", input("type", v.type ?? "book"))}</div>` +
           `<div class="two">${label("Status", `<select name="status">${Object.entries(STATUS_LABELS).map(([k, l]) => `<option value="${k}"${sel(k)}>${l}</option>`).join("")}</select>`)}${editing ? dateInput(v.date) : ""}</div>` +
           linkInput(v.link) +
-          label("Your thoughts (optional)", area("note", v.note, 4))
+          tagsInput(v.tags) +
+          label("Your thoughts (optional)", area("note", v.note, 4, "", "write-target")) + writeTools()
         );
       },
       build(base, f) {
@@ -209,7 +224,7 @@
         const item = { ...base, title: f.title.trim(), author: f.author.trim(), type: f.type.trim() || "book", status: f.status };
         setOrDrop(item, "link", cleanLink(f.link));
         setOrDrop(item, "note", f.note.trim());
-        return item;
+        return setTags(item, f.tags);
       },
       async create(f) {
         const item = this.build({ date: today() }, f);
@@ -229,14 +244,15 @@
       fields: (v) =>
         input("title", v.title, 'class="title-input" placeholder="Title"') +
         `<div class="two">${label("Author", input("author", v.author))}${linkInput(v.link)}</div>` +
-        label("How it impacted you (optional)", area("note", v.note, 4, "", "body-input")) + tangentTool,
+        tagsInput(v.tags) +
+        label("How it impacted you (optional)", area("note", v.note, 4, "", "body-input write-target")) + writeTools(),
       build(base, f) {
         if (!f.title.trim()) throw new Error("Give it a title.");
         const item = { ...base, title: f.title.trim() };
         setOrDrop(item, "author", f.author.trim());
         setOrDrop(item, "link", cleanLink(f.link));
         setOrDrop(item, "note", f.note.trim());
-        return item;
+        return setTags(item, f.tags);
       },
       async create(f) {
         const item = this.build({}, f);
@@ -251,7 +267,7 @@
     },
 
     about: {
-      fields: (v) => area("body", v.body, 14, "", "body-input") + tangentTool,
+      fields: (v) => area("body", v.body, 14, "", "body-input write-target") + writeTools(),
       async save(_, { body }) {
         const f = await readFile("content/about.md");
         await writeFile("content/about.md", body.trim() + "\n", "Edit My story", f?.sha);
@@ -261,7 +277,7 @@
     // The line under the Writing / Reading / Drafts heading. These live in their own
     // file so saving the homepage intro (site.json) can never touch them.
     lede: {
-      fields: (v) => label("Line under the heading. Links work like [email me](mailto:you@example.com)", area("text", v.text, 3)),
+      fields: (v) => label("Line under the heading", area("text", v.text, 3, "", "write-target")) + writeTools(false),
       async save({ page }, { text }) {
         await updateJSON("content/ledes.json", (cur) => ({ ...cur, [page]: text.trim() }), "Edit page intro");
       },
@@ -382,6 +398,7 @@
     if (kind === "about") { target.innerHTML = ""; target.append(form); }
     else target.replaceWith(form);
     growAll(form);
+    fillTagSuggest(form);
     (form.querySelector(".title-input, .body-input, input, textarea"))?.focus();
   }
 
@@ -463,14 +480,15 @@
     const form = $("form", el);
     formRefs.set(form, { kind, mode: opts.mode || "new", ref: opts.ref, sheet: el });
     growAll(form);
+    fillTagSuggest(form);
     form.querySelector("input, textarea").focus();
   }
 
   // Opens the new-post sheet filled in from a draft. Publishing it moves the draft to Writing.
   function publishDraft(btn) {
     const { ref, values } = currentValues("note", btn);
-    const { title, tldr, link, text: body } = values;
-    compose("post", { title, tldr, link, body }, { mode: "publish", ref, heading: "Publish to Writing" });
+    const { title, tldr, link, tags, text: body } = values;
+    compose("post", { title, tldr, link, tags, body }, { mode: "publish", ref, heading: "Publish to Writing" });
   }
 
   // ─── Sign in / out ─────────────────────────────────────────────────
@@ -516,6 +534,7 @@
     const info = formRefs.get(form);
     if (!info) return;
     e.preventDefault();
+    if (uploading.get(form)) return setMsg(form, "Wait for your files to finish uploading.", "err");
     const btn = $('button[type="submit"]', form);
     btn.disabled = true;
     setMsg(form, info.mode === "edit" ? "Saving…" : "Publishing…");
@@ -525,7 +544,7 @@
       } else if (info.mode === "new") {
         const page = await KINDS[info.kind].create(collect(form));
         const here = document.body.dataset.page;
-        const showsIt = { post: [], note: ["notes", "home"], read: ["reading", "home"], shaped: ["reading"] }[info.kind].includes(here);
+        const showsIt = { post: [], note: ["notes", "home", "topics"], read: ["reading", "home", "topics"], shaped: ["reading", "topics"] }[info.kind].includes(here);
         if (showsIt) { closeSheet(info.sheet); await rerender(); }
         else location.href = page;
       } else {
@@ -543,6 +562,9 @@
     if (!btn) return;
     const act = btn.dataset.act;
     if (act === "tangent") addTangent(btn.closest("form"));
+    else if (act === "link") openLinkPanel(btn.closest("form"));
+    else if (act === "attach") $(".attach-input", btn.closest("form")).click();
+    else if (act === "tag") toggleTag(btn);
     else if (act === "new") compose(btn.dataset.kind);
     else if (act === "edit") openInline(btn);
     else if (act === "publish") publishDraft(btn);
@@ -563,20 +585,45 @@
     }
   });
 
-  document.addEventListener("mousedown", (e) => { if (e.target.closest('[data-act="tangent"]')) e.preventDefault(); });
-  document.addEventListener("input", (e) => { if (e.target.matches("textarea.autogrow")) grow(e.target, true); });
+  // Keep the text selection in the writing box when you press these buttons.
+  document.addEventListener("mousedown", (e) => { if (e.target.closest('[data-act="tangent"], [data-act="link"], [data-act="attach"], [data-act="tag"]')) e.preventDefault(); });
+  document.addEventListener("input", (e) => {
+    if (e.target.matches("textarea.autogrow")) grow(e.target, true);
+    if (e.target.matches(".tags-input")) markTags(e.target.closest("form"));
+  });
   document.addEventListener("keydown", (e) => {
     // Cmd/Ctrl+Enter saves, Esc cancels.
     const form = e.target.closest?.("form.inline-edit, form.compose");
     if (!form) return;
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
     if (e.key === "Escape") $('[data-act="cancel"]', form)?.click();
-    if (e.code === "Digit9" && e.shiftKey && (e.metaKey || e.ctrlKey) && $(".body-input", form)) { e.preventDefault(); addTangent(form); }
+    if (e.code === "Digit9" && e.shiftKey && (e.metaKey || e.ctrlKey) && $('[data-act="tangent"]', form)) { e.preventDefault(); addTangent(form); }
+    if (e.key === "k" && (e.metaKey || e.ctrlKey) && $('[data-act="link"]', form)) { e.preventDefault(); openLinkPanel(form); }
   });
+
+  // The writing box the tools act on: the one you last typed in, or the main one.
+  const lastBox = new WeakMap();
+  document.addEventListener("focusin", (e) => {
+    const form = e.target.closest?.("form.inline-edit, form.compose");
+    if (form && e.target.matches("textarea")) lastBox.set(form, e.target);
+  });
+  const writeTarget = (form) => {
+    const last = lastBox.get(form);
+    return last && form.contains(last) ? last : $(".write-target", form) || $("textarea", form);
+  };
+
+  // Types text at the cursor the way a keypress would, so Cmd+Z still works.
+  function insertText(ta, text) {
+    if (document.activeElement !== ta) ta.focus();
+    if (!document.execCommand("insertText", false, text)) {
+      ta.setRangeText(text, ta.selectionStart, ta.selectionEnd, "end");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
 
   // Wrap the selection in ((…)), or drop an empty one at the cursor and put you inside it.
   function addTangent(form) {
-    const ta = $(".body-input", form);
+    const ta = writeTarget(form);
     if (!ta) return;
     if (document.activeElement !== ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
     const { selectionStart: a, selectionEnd: b } = ta;
@@ -588,6 +635,184 @@
     }
     const caret = sel ? a + sel.length + 4 : a + 2;
     ta.setSelectionRange(caret, caret);
+  }
+
+  // ─── Links ─────────────────────────────────────────────────────────
+  // A small box under the writing tools: paste any link, or search your own posts,
+  // drafts, reading and pages. The selected text becomes the link; with nothing
+  // selected, the title (or address) is put in and selected so you can type over it.
+
+  const PAGES = [
+    { type: "Page", title: "Home", href: "index.html" },
+    ...NAV.map((n) => ({ type: "Page", title: n.label, href: n.href })),
+  ];
+  const looksLikeLink = (s) =>
+    /^(https?:\/\/|mailto:|tel:|\/|#|[\w-]+\.html)/i.test(s) || /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(s) || /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(s);
+  const toHref = (s) =>
+    /^[^\s@:/]+@[^\s@]+\.[a-z]{2,}$/i.test(s) ? "mailto:" + s :
+    /^(https?:|mailto:|tel:|\/|#|[\w-]+\.html)/i.test(s) ? s : "https://" + s;
+
+  function openLinkPanel(form) {
+    const old = $(".link-panel", form);
+    if (old) { old.remove(); return; }
+    const ta = writeTarget(form);
+    if (!ta) return;
+    const a = ta.selectionStart, b = ta.selectionEnd;
+    const selected = ta.value.slice(a, b);
+    const panel = document.createElement("div");
+    panel.className = "link-panel";
+    panel.innerHTML = `
+      <input class="link-q" placeholder="Paste a link, or search your writing, drafts and reading" autocomplete="off" aria-label="Link to">
+      <ul class="link-results" role="listbox"></ul>`;
+    $(".write-tools", form).after(panel);
+    const q = $(".link-q", panel);
+    q.focus();
+
+    let items = PAGES, shown = [], active = 0;
+    const draw = () => {
+      const v = q.value.trim();
+      shown = v && looksLikeLink(v)
+        ? [{ type: "Link", title: v, href: toHref(v), url: true }]
+        : [...items].filter((it) => !v || it.title.toLowerCase().includes(v.toLowerCase())).slice(0, 8);
+      active = Math.min(active, Math.max(shown.length - 1, 0));
+      $(".link-results", panel).innerHTML = shown.map((it, i) => `
+        <li><button type="button" data-i="${i}" class="${i === active ? "active" : ""}" role="option">
+          <span class="kind">${esc(it.type)}</span>${esc(it.title)}</button></li>`).join("") ||
+        `<li class="link-none">Nothing on your site matches. Paste a full link instead.</li>`;
+    };
+    const close = () => { panel.remove(); ta.focus(); };
+    const pick = (it) => {
+      if (!it) return;
+      panel.remove();
+      const text = (selected || it.title).replace(/([[\]])/g, "\\$1");
+      const href = it.href.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29");
+      ta.focus();
+      ta.setSelectionRange(a, b);
+      insertText(ta, `[${text}](${href})`);
+      if (!selected) ta.setSelectionRange(a + 1, a + 1 + text.length);
+    };
+
+    siteIndex().then((list) => { items = [...PAGES, ...list.filter((it) => it.title)]; draw(); }).catch(() => {});
+    draw();
+    q.addEventListener("input", () => { active = 0; draw(); });
+    q.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        active = (active + (e.key === "ArrowDown" ? 1 : -1) + shown.length) % (shown.length || 1);
+        draw();
+      } else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); pick(shown[active]); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    panel.addEventListener("mousedown", (e) => { if (e.target.closest("button")) e.preventDefault(); });
+    panel.addEventListener("click", (e) => { const btn = e.target.closest("button[data-i]"); if (btn) pick(shown[+btn.dataset.i]); });
+  }
+
+  // ─── Attachments ───────────────────────────────────────────────────
+  // Files go to content/uploads/ in the repo, one commit each. Images, video and audio
+  // show up in place; anything else becomes a link to the file.
+
+  const MAX_UPLOAD = 25 * 1024 * 1024;
+  const uploading = new WeakMap(); // form → how many files are still uploading
+
+  const readBase64 = (file) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new Error(`Couldn't read ${file.name}.`));
+    r.readAsDataURL(file);
+  });
+
+  async function uploadFile(file) {
+    if (file.size > MAX_UPLOAD) throw new Error(`${file.name} is over 25 MB, too big to add here. Try a smaller copy.`);
+    const dot = file.name.lastIndexOf(".");
+    const ext = dot > 0 ? file.name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+    const base = slugify(dot > 0 ? file.name.slice(0, dot) : file.name).slice(0, 60) || "file";
+    const path = `content/uploads/${base}-${Math.random().toString(36).slice(2, 7)}${ext ? "." + ext : ""}`;
+    const content = await readBase64(file);
+    await checkFresh();
+    await gh(path, { method: "PUT", body: JSON.stringify({ message: `Upload ${file.name}`, content, branch: BRANCH }) });
+    return path;
+  }
+
+  function attachmentText(file, path, before) {
+    const name = file.name.replace(/[[\]]/g, "");
+    const kind = (file.type || "").split("/")[0];
+    const block = { image: `![${name}](${path})`, video: `<video src="${path}" controls></video>`, audio: `<audio src="${path}" controls></audio>` }[kind];
+    if (!block) return `[${name}](${path})`;
+    return (before && !before.endsWith("\n") ? "\n\n" : "") + block + "\n\n";
+  }
+
+  async function attachFiles(form, files, ta = writeTarget(form)) {
+    if (!files.length || !ta) return;
+    uploading.set(form, (uploading.get(form) || 0) + 1);
+    try {
+      for (const [i, file] of files.entries()) {
+        setMsg(form, `Uploading ${file.name}${files.length > 1 ? ` (${i + 1} of ${files.length})` : ""}…`);
+        const path = await uploadFile(file);
+        if (!form.isConnected) return;
+        ta.focus();
+        ta.setSelectionRange(ta.selectionEnd, ta.selectionEnd); // add after any selected text, don't replace it
+        insertText(ta, attachmentText(file, path, ta.value.slice(0, ta.selectionStart)));
+      }
+      setMsg(form, files.length > 1 ? `Added ${files.length} files.` : `Added ${files[0].name}.`);
+    } catch (err) {
+      setMsg(form, err.message, "err");
+    } finally {
+      uploading.set(form, uploading.get(form) - 1);
+    }
+  }
+
+  document.addEventListener("change", (e) => {
+    if (!e.target.matches(".attach-input")) return;
+    const form = e.target.closest("form");
+    attachFiles(form, [...e.target.files]);
+    e.target.value = "";
+  });
+
+  const fileBox = (e) => e.target.closest?.("form.inline-edit textarea, form.compose textarea");
+  document.addEventListener("paste", (e) => {
+    const ta = fileBox(e);
+    const files = [...(e.clipboardData?.files || [])];
+    if (!ta || !files.length || e.clipboardData.getData("text/plain")) return;
+    e.preventDefault();
+    attachFiles(ta.closest("form"), files, ta);
+  });
+  document.addEventListener("dragover", (e) => {
+    if (fileBox(e) && Array.from(e.dataTransfer?.types || []).includes("Files")) e.preventDefault();
+  });
+  document.addEventListener("drop", (e) => {
+    const ta = fileBox(e);
+    if (!ta || !e.dataTransfer?.files.length) return;
+    e.preventDefault();
+    ta.focus();
+    attachFiles(ta.closest("form"), [...e.dataTransfer.files], ta);
+  });
+
+  // ─── Tags ──────────────────────────────────────────────────────────
+
+  async function fillTagSuggest(form) {
+    const box = $(".tag-suggest", form);
+    if (!box) return;
+    const counts = {};
+    (await siteIndex().catch(() => [])).forEach((it) => it.tags.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
+    const tags = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+    box.innerHTML = tags.map((t) => `<button type="button" class="chip" data-act="tag" data-tag="${esc(t)}">${esc(t)}</button>`).join("");
+    markTags(form);
+  }
+
+  function markTags(form) {
+    const field = $(".tags-input", form);
+    if (!field) return;
+    const have = parseTags(field.value);
+    form.querySelectorAll(".tag-suggest .chip").forEach((c) => c.classList.toggle("on", have.includes(c.dataset.tag)));
+  }
+
+  function toggleTag(btn) {
+    const form = btn.closest("form");
+    const field = $(".tags-input", form);
+    const have = parseTags(field.value);
+    const t = btn.dataset.tag;
+    field.value = (have.includes(t) ? have.filter((x) => x !== t) : [...have, t]).join(", ");
+    markTags(form);
   }
 
   // ─── Start ─────────────────────────────────────────────────────────
