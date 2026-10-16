@@ -238,9 +238,17 @@ const metaLine = (date, read, viewPath, dateOpts) => `
 
 // Each browser counts once per post or draft, so the number is unique viewers.
 // Your own browser (signed in) never counts.
+//
+// GoatCounter caches each count for hours, keyed on the whole address. A "start" date
+// long before the site existed still counts everything, and moving it by a day every
+// 5 minutes means a count is never more than 5 minutes old.
+const freshStart = () => {
+  const d = new Date(Date.UTC(2000, 0, 1) + (Math.floor(Date.now() / 300000) % 3650) * 86400000);
+  return d.toISOString().slice(0, 10);
+};
 const viewCache = {};
 const viewCount = (path) =>
-  (viewCache[path] ||= fetch(`https://${GOATCOUNTER}.goatcounter.com/counter/${encodeURIComponent(path)}.json`)
+  (viewCache[path] ||= fetch(`https://${GOATCOUNTER}.goatcounter.com/counter/${encodeURIComponent(path)}.json?start=${freshStart()}`)
     .then((r) => (r.ok ? r.json() : { count: "0" }))
     .then((j) => parseInt(String(j.count).replace(/\D/g, ""), 10) || 0)
     .catch(() => 0));
@@ -249,7 +257,7 @@ function fillViews(root) {
   root.querySelectorAll("[data-views]").forEach(async (el) => {
     const n = await viewCount(el.dataset.views);
     el.textContent = `${n.toLocaleString()} ${n === 1 ? "viewer" : "viewers"}`;
-    el.hidden = !n;
+    el.hidden = false;
   });
 }
 
