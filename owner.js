@@ -187,7 +187,7 @@
         return setTags(setOrDrop(item, "link", cleanLink(f.link)), f.tags);
       },
       async create(f) {
-        const item = this.build({ date: today() }, f);
+        const item = this.build({ id: Math.random().toString(36).slice(2, 8), date: today() }, f);
         await updateJSON("content/notes.json", (l) => void l.unshift(item), item.title ? `Draft: ${item.title}` : "Draft");
         return "notes.html";
       },

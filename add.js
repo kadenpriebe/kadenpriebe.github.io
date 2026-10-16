@@ -33,7 +33,7 @@ if (kind === "post" && args[0]) {
   console.log(`New post → content/posts/${slug}.md`);
 } else if (kind === "note" && args[0]) {
   const notes = readJSON("notes.json");
-  notes.unshift({ date: today, text: args[0] });
+  notes.unshift({ id: Math.random().toString(36).slice(2, 8), date: today, text: args[0] });
   writeJSON("notes.json", notes);
   console.log("Draft added.");
 } else if (kind === "read" && args[0]) {

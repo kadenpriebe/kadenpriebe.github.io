@@ -133,7 +133,11 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
   border-bottom: 1px solid var(--line);
 }
 .row a { text-decoration: none; }
-.row time { flex-shrink: 0; }
+.row-meta { flex-shrink: 0; }
+
+/* Date · read time · viewers */
+.meta-line { display: flex; flex-wrap: wrap; align-items: baseline; font: 14px/1.4 var(--mono); color: var(--muted); }
+.meta-line > :not(:first-child)::before { content: "·"; margin: 0 0.5em; }
 
 .book { padding: 18px 0; border-bottom: 1px solid var(--line); }
 .book-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
@@ -377,8 +381,11 @@ body[data-page="topics"] { max-width: 1120px; }
   h1, .hero h1 { font-size: 34px; }
   nav, .header-right { gap: 14px; }
   nav { font-size: 16px; flex-wrap: wrap; row-gap: 4px; }
+  .header-right { width: 100%; justify-content: space-between; }
+  .row { flex-wrap: wrap; row-gap: 2px; }
+  .row-main { flex-basis: 100%; }
 }
-@media (max-width: 380px) {
+@media (max-width: 420px) {
   nav, .header-right { gap: 10px; }
   nav { font-size: 15px; }
 }

@@ -217,6 +217,85 @@ function setupThemeToggle(btn) {
   paint();
 }
 
+// ─── Read time and viewers ───────────────────────────────────────────
+// Viewer counts are kept by GoatCounter (goatcounter.com). Put your site code here, the
+// "kaden" in kaden.goatcounter.com, and turn on "Allow adding visitor counts on your
+// website" in its settings. Leave it empty and counts are simply not shown.
+const GOATCOUNTER = "";
+
+// About 230 words a minute, tangents included.
+function readTime(text = "") {
+  const div = document.createElement("div");
+  div.innerHTML = md(text);
+  const words = div.textContent.split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 230))} min read`;
+}
+
+// The date / read time / viewers line on posts and drafts. Viewers fill in after the page draws.
+const metaLine = (date, read, viewPath, dateOpts) => `
+  <div class="meta-line"><time>${fmtDate(date, dateOpts)}</time>${read ? `<span>${read}</span>` : ""}${
+    GOATCOUNTER && viewPath ? `<span class="views" data-views="${esc(viewPath)}" hidden></span>` : ""}</div>`;
+
+// Each browser counts once per post or draft, so the number is unique viewers.
+// Your own browser (signed in) never counts.
+const viewCache = {};
+const viewCount = (path) =>
+  (viewCache[path] ||= fetch(`https://${GOATCOUNTER}.goatcounter.com/counter/${encodeURIComponent(path)}.json`)
+    .then((r) => (r.ok ? r.json() : { count: "0" }))
+    .then((j) => parseInt(String(j.count).replace(/\D/g, ""), 10) || 0)
+    .catch(() => 0));
+
+function fillViews(root) {
+  root.querySelectorAll("[data-views]").forEach(async (el) => {
+    const n = await viewCount(el.dataset.views);
+    el.textContent = `${n.toLocaleString()} ${n === 1 ? "viewer" : "viewers"}`;
+    el.hidden = !n;
+  });
+}
+
+let gcQueue = [];
+if (GOATCOUNTER && !OWNER) {
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://gc.zgo.at/count.js";
+  s.dataset.goatcounter = `https://${GOATCOUNTER}.goatcounter.com/count`;
+  s.dataset.goatcounterSettings = JSON.stringify({ no_onload: true });
+  s.onload = () => { gcQueue.forEach((v) => window.goatcounter?.count?.(v)); gcQueue = []; };
+  document.head.append(s);
+}
+function gcSend(vars) {
+  if (!GOATCOUNTER || OWNER) return;
+  if (window.goatcounter?.count) window.goatcounter.count(vars);
+  else gcQueue.push(vars);
+}
+function countView(path) {
+  if (!GOATCOUNTER || OWNER || !path) return;
+  try {
+    if (localStorage.getItem("seen:" + path)) return;
+    localStorage.setItem("seen:" + path, "1");
+  } catch {}
+  gcSend({ path, title: document.title });
+}
+
+// A draft counts as viewed once it's been on screen for 3 seconds (or opened, when collapsed).
+function watchDrafts(main) {
+  if (!GOATCOUNTER || OWNER || !("IntersectionObserver" in window)) return;
+  const timers = new Map();
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const li = e.target;
+      clearTimeout(timers.get(li));
+      if (!e.isIntersecting) continue;
+      timers.set(li, setTimeout(() => {
+        if (main.classList.contains("collapsed") && !li.classList.contains("open")) return;
+        countView(li.dataset.view);
+        io.unobserve(li);
+      }, 3000));
+    }
+  });
+  main.querySelectorAll("[data-view]").forEach((li) => io.observe(li));
+}
+
 // ─── List item templates ─────────────────────────────────────────────
 
 // The Writing page passes an excerpt (so there's something to collapse); the homepage doesn't.
@@ -233,7 +312,7 @@ const postItem = (p, excerpt) => {
       <a href="post.html?p=${encodeURIComponent(p.slug)}">${esc(p.title)}</a>
       ${summary}${tags}
     </div>
-    <time>${fmtDate(p.date, { month: "short", day: "numeric" })}</time>
+    <div class="row-meta">${metaLine(p.date, p._read, `/posts/${p.slug}`, { month: "short", day: "numeric" })}</div>
     ${summary || tags ? FOLD : ""}
   </li>`;
 };
@@ -291,8 +370,8 @@ const shapedItem = (b) => `
   </li>`;
 
 const noteItem = (n) => `
-  <li class="note foldable${n.title ? " has-title" : ""}" data-i="${n._i}"${idAttr(n)}>
-    <time>${fmtDate(n.date)}</time>${FOLD}
+  <li class="note foldable${n.title ? " has-title" : ""}" data-i="${n._i}"${idAttr(n)}${n.id ? ` data-view="/drafts/${esc(n.id)}"` : ""}>
+    ${metaLine(n.date, readTime(n.text), n.id && `/drafts/${n.id}`)}${FOLD}
     ${n.title ? `<h3 class="note-title">${esc(n.title)}</h3>` : ""}
     ${tldrBox(n.tldr)}
     <div class="note-body">${md(n.text)}</div>
@@ -339,6 +418,7 @@ document.addEventListener("click", (e) => {
   if (!li || e.target.closest("a, form, button:not(.fold)")) return;
   const open = li.classList.toggle("open");
   li.querySelector(".fold")?.setAttribute("aria-expanded", open);
+  if (open) countView(li.dataset.view);
 });
 
 // ─── Pages ───────────────────────────────────────────────────────────
@@ -352,6 +432,7 @@ const pages = {
     ]);
     window.SITE_DATA = { posts: allPosts, reading: allReading, notes: allNotes };
     const posts = [...allPosts].sort(byDateDesc);
+    if (posts[0]) posts[0] = { ...posts[0], _read: readTime(await load(`content/posts/${posts[0].slug}.md`, "text").catch(() => "")) };
     const reading = indexed(allReading, readingIds(allReading)).sort(byDateDesc);
     const notes = indexed(allNotes, draftIds(allNotes)).sort(byDateDesc);
     const current = reading.filter((b) => b.status === "reading");
@@ -387,8 +468,9 @@ const pages = {
   async writing(main) {
     const all = await load("content/posts.json");
     window.SITE_DATA = { posts: all };
-    const posts = [...all].sort(byDateDesc);
-    const bodies = await Promise.all(posts.map((p) => load(`content/posts/${p.slug}.md`, "text").catch(() => "")));
+    const sorted = [...all].sort(byDateDesc);
+    const bodies = await Promise.all(sorted.map((p) => load(`content/posts/${p.slug}.md`, "text").catch(() => "")));
+    const posts = sorted.map((p, i) => ({ ...p, _read: readTime(bodies[i]) }));
     const excerpts = Object.fromEntries(posts.map((p, i) => [p.slug, excerptOf(bodies[i])]));
     const years = {};
     for (const p of posts) (years[p.date.slice(0, 4)] ||= []).push(p);
@@ -414,11 +496,12 @@ const pages = {
     const body = await load(`content/posts/${encodeURIComponent(slug)}.md`, "text");
     window.SITE_DATA = { posts, post, body };
     document.title = `${post.title} — ${SITE.name}`;
+    countView(`/posts/${post.slug}`);
     main.innerHTML = `
       <article>
         <header class="post-head">
           <h1>${esc(post.title)}</h1>
-          <time>${fmtDate(post.date, { year: "numeric", month: "long", day: "numeric" })}</time>
+          ${metaLine(post.date, readTime(body), `/posts/${post.slug}`, { year: "numeric", month: "long", day: "numeric" })}
           ${extLink(post.link)}
           ${tagList(post.tags)}
           ${ownerCtl(`data-kind="post" data-slug="${esc(post.slug)}"`)}
@@ -559,8 +642,13 @@ window.siteRender = async () => {
   try {
     await pages[page](main);
     applyCollapse(main, page);
-    if (firstRender) showTarget();
+    if (firstRender) {
+      showTarget();
+      if (page !== "post") gcSend({ path: location.pathname, title: document.title });
+    }
     firstRender = false;
+    if (GOATCOUNTER) fillViews(main);
+    watchDrafts(main);
     document.dispatchEvent(new CustomEvent("site:rendered", { detail: { page } }));
   } catch (err) {
     const fileHint =
