@@ -275,6 +275,31 @@
       remove: (ref) => changeItem("content/shaped.json", ref.index, ref.original, null, "Delete from books that shaped me"),
     },
 
+    // "Topics I want to write about" on the Writing page.
+    idea: {
+      noun: "topic",
+      fields: (v) =>
+        input("title", v.title, 'class="title-input" placeholder="What do you want to write about?"') +
+        tagsInput(v.tags) +
+        label("Notes (optional): the angle, questions, links", area("note", v.note, 4, "", "body-input write-target")) + writeTools(),
+      build(base, f) {
+        if (!f.title.trim()) throw new Error("Give the topic a name.");
+        const item = { ...base, title: f.title.trim() };
+        setOrDrop(item, "note", f.note.trim());
+        return setTags(item, f.tags);
+      },
+      async create(f) {
+        const item = this.build({}, f);
+        await updateJSON("content/ideas.json", (l) => void l.push(item), `Topic to write about: ${item.title}`);
+        return "writing.html";
+      },
+      async save(ref, f) {
+        const next = this.build({}, f);
+        await changeItem("content/ideas.json", ref.index, ref.original, next, `Edit topic to write about: ${next.title}`);
+      },
+      remove: (ref) => changeItem("content/ideas.json", ref.index, ref.original, null, "Delete topic to write about"),
+    },
+
     about: {
       fields: (v) => area("body", v.body, 14, "", "body-input write-target") + writeTools(),
       async save(_, { body }) {
@@ -322,9 +347,9 @@
   function currentValues(kind, btn) {
     const D = window.SITE_DATA || {};
     if (kind === "post") return { ref: { slug: btn.dataset.slug }, values: { ...D.post, body: D.body } };
-    if (kind === "note" || kind === "read" || kind === "shaped") {
+    if (kind === "note" || kind === "read" || kind === "shaped" || kind === "idea") {
       const index = +btn.dataset.i;
-      const original = strip({ note: D.notes, read: D.reading, shaped: D.shaped }[kind][index]);
+      const original = strip({ note: D.notes, read: D.reading, shaped: D.shaped, idea: D.ideas }[kind][index]);
       return { ref: { index, original }, values: original };
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
@@ -477,7 +502,7 @@
   }
 
   function compose(kind, values = {}, opts = {}) {
-    const titles = { post: "New post", note: "New draft", read: "New reading", shaped: "A book that shaped you" };
+    const titles = { post: "New post", note: "New draft", read: "New reading", shaped: "A book that shaped you", idea: "A topic to write about" };
     const el = sheet(`
       <form class="compose">
         <div class="sheet-bar">
@@ -501,6 +526,13 @@
     const { ref, values } = currentValues("note", btn);
     const { title, tldr, link, tags, sketches, text: body } = values;
     compose("post", { title, tldr, link, tags, sketches, body }, { mode: "publish", ref, heading: "Publish to Writing" });
+  }
+
+  // Opens a new draft filled in from a topic you want to write about. The topic stays on
+  // the list until you delete it.
+  function startDraft(btn) {
+    const { values } = currentValues("idea", btn);
+    compose("note", { title: values.title, text: values.note, tags: values.tags }, { heading: "New draft" });
   }
 
   // ─── Sign in / out ─────────────────────────────────────────────────
@@ -557,7 +589,7 @@
       } else if (info.mode === "new") {
         const page = await KINDS[info.kind].create(collect(form));
         const here = document.body.dataset.page;
-        const showsIt = { post: [], note: ["notes", "home", "topics"], read: ["reading", "home", "topics"], shaped: ["reading", "topics"] }[info.kind].includes(here);
+        const showsIt = { post: [], note: ["notes", "home", "topics"], read: ["reading", "home", "topics"], shaped: ["reading", "topics"], idea: ["writing", "topics"] }[info.kind].includes(here);
         if (showsIt) { closeSheet(info.sheet); await rerender(); }
         else location.href = page;
       } else {
@@ -582,6 +614,7 @@
     else if (act === "new") compose(btn.dataset.kind);
     else if (act === "edit") openInline(btn);
     else if (act === "publish") publishDraft(btn);
+    else if (act === "start-draft") startDraft(btn);
     else if (act === "delete") removeItem(btn);
     else if (act === "signout") {
       if (!confirm("Sign out of editing on this browser?")) return;

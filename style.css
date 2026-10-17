@@ -199,6 +199,7 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
 .shaped { margin-top: 64px; }
 .shaped .lede { font-size: 17px; }
 .add-shaped { margin-top: 20px; }
+.idea .book-title { font-style: normal; }
 
 /* ─── Collapse all ─── */
 .row-main { min-width: 0; }

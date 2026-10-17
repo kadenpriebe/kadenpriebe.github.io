@@ -142,6 +142,7 @@ function anchorIds(list, key, prefix = "") {
 const draftIds = (notes) => anchorIds(notes, (n) => n.title || `draft-${n.date}`);
 const readingIds = (list) => anchorIds(list, (b) => b.title);
 const shapedIds = (list) => anchorIds(list, (b) => b.title, "shaped-");
+const ideaIds = (list) => anchorIds(list, (t) => t.title, "topic-");
 const idAttr = (x) => (x._id ? ` id="${esc(x._id)}"` : "");
 
 // Tags under an item. Each one opens the Topics page filtered to it.
@@ -152,16 +153,17 @@ const tagList = (tags = [], on = "") =>
 
 // Everything on the site in one list: used by the Topics page and the link picker.
 async function siteIndex() {
-  const [posts, notes, reading, shaped] = await Promise.all(
-    ["posts", "notes", "reading", "shaped"].map((f) => load(`content/${f}.json`).catch(() => []))
+  const [posts, notes, reading, shaped, ideas] = await Promise.all(
+    ["posts", "notes", "reading", "shaped", "ideas"].map((f) => load(`content/${f}.json`).catch(() => []))
   );
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const dIds = draftIds(notes), rIds = readingIds(reading), sIds = shapedIds(shaped);
+  const dIds = draftIds(notes), rIds = readingIds(reading), sIds = shapedIds(shaped), iIds = ideaIds(ideas);
   return [
     ...posts.map((p) => ({ type: "Writing", title: p.title, date: p.date, tags: p.tags || [], href: `post.html?p=${encodeURIComponent(p.slug)}` })),
     ...notes.map((n, i) => ({ type: "Draft", title: n.title || firstLine(n.text), date: n.date, tags: n.tags || [], href: `notes.html#${dIds[i]}` })),
     ...reading.map((b, i) => ({ type: cap(b.type || "book"), title: b.title, date: b.date, tags: b.tags || [], href: `reading.html#${rIds[i]}` })),
     ...shaped.map((b, i) => ({ type: "Shaped me", title: b.title, date: "", tags: b.tags || [], href: `reading.html#${sIds[i]}` })),
+    ...ideas.map((t, i) => ({ type: "To write", title: t.title, date: "", tags: t.tags || [], href: `writing.html#${iIds[i]}` })),
   ].sort(byDateDesc);
 }
 
@@ -488,6 +490,17 @@ const shapedItem = (b) => `
     ${ownerCtl(`data-kind="shaped" data-i="${b._i}"`)}
   </li>`;
 
+// "Topics I want to write about" on the Writing page.
+const ideaItem = (t) => `
+  <li class="book idea${t.note ? " foldable" : ""}" data-i="${t._i}"${idAttr(t)}>
+    <div class="book-head"><span class="book-title">${esc(t.title)}</span></div>
+    ${tagList(t.tags)}
+    ${t.note ? `<div class="note-body">${md(t.note)}</div>${FOLD}` : ""}
+    ${ownerCtl(`data-kind="idea" data-i="${t._i}"`, {
+      extra: `<button type="button" data-act="start-draft" data-i="${t._i}">Start a draft</button>`,
+    })}
+  </li>`;
+
 const noteItem = (n) => `
   <li class="note foldable${n.title ? " has-title" : ""}" data-i="${n._i}"${idAttr(n)}${n.id ? ` data-view="/drafts/${esc(n.id)}"` : ""}>
     ${metaLine(n.date, readTime(n.text), n.id && `/drafts/${n.id}`)}${FOLD}
@@ -585,8 +598,9 @@ const pages = {
   },
 
   async writing(main) {
-    const all = await load("content/posts.json");
-    window.SITE_DATA = { posts: all };
+    const [all, allIdeas] = await Promise.all([load("content/posts.json"), load("content/ideas.json").catch(() => [])]);
+    window.SITE_DATA = { posts: all, ideas: allIdeas };
+    const ideas = indexed(allIdeas, ideaIds(allIdeas));
     const sorted = [...all].sort(byDateDesc);
     const bodies = await Promise.all(sorted.map((p) => load(`content/posts/${p.slug}.md`, "text").catch(() => "")));
     const posts = sorted.map((p, i) => ({ ...p, _read: readTime(bodies[i]) }));
@@ -596,12 +610,19 @@ const pages = {
     main.innerHTML = `
       <h1>Writing</h1>
       ${lede("writing")}
-      ${posts.some((p) => p.tldr || excerpts[p.slug]) ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
+      ${posts.some((p) => p.tldr || excerpts[p.slug]) || ideas.some((t) => t.note) ? `<div class="page-tools">${collapseBtn()}</div>` : ""}
       ${Object.keys(years).sort().reverse().map((y) => `
         <section>
           <h2>${y}</h2>
           <ul class="rows">${years[y].map((p) => postItem(p, excerpts[p.slug])).join("")}</ul>
-        </section>`).join("") || `<p class="empty">Nothing yet.</p>`}`;
+        </section>`).join("") || `<p class="empty">Nothing yet.</p>`}
+      ${ideas.length || OWNER ? `
+      <section class="shaped ideas">
+        <h2>Topics I want to write about</h2>
+        ${lede("ideas")}
+        ${ideas.length ? `<ul class="books">${ideas.map(ideaItem).join("")}</ul>` : ""}
+        ${OWNER ? `<button type="button" class="collapse-all add-shaped" data-act="new" data-kind="idea">+ Add a topic</button>` : ""}
+      </section>` : ""}`;
   },
 
   async post(main) {
