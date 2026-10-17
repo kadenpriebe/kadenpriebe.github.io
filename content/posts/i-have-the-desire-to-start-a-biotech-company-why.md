@@ -15,6 +15,8 @@
 
 6) i want to have fun with a lean team of people my age. Life is really about finding your tribe and i want that bond with a founding team. ive seen it from the outside. 
 
+7) i have cookie-bite hearing loss (mid-frequency sensorineural hearing loss) a rare condition that affects about 0.7% to 1% of hearing loss cases. can gene therapy can fix this? so what are the bottlenecks in, in vivo gene therapy. see https://millenniumproblems.bio/ point number 7: Bacterial production of gene therapies.
+
 In conclusion, it was the perfect intersection of my innate interests/talent as well as where the world is going. 
 
 ((i think theres more context to fill in as to how exactly I landed on biotech which is more about my story, and I think I will go back and type more about my story in my About section when I feel like it. ))
