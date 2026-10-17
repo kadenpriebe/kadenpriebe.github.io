@@ -196,8 +196,27 @@ ul.rows, ul.books, ul.notes { list-style: none; padding: 0; margin: 0; }
 .flash { animation: flash 2s ease-out; }
 @keyframes flash { from { background: var(--tag-bg); } to { background: transparent; } }
 
+/* "Books that shaped me": folded away at the bottom of the Media page */
 .shaped { margin-top: 64px; }
 .shaped .lede { font-size: 17px; }
+details.shaped { margin-top: 72px; border-top: 1px solid var(--line); padding-top: 16px; }
+details.shaped > summary { display: flex; align-items: center; gap: 8px; width: max-content; font: 13px/1.4 var(--mono); color: var(--muted); cursor: pointer; list-style: none; }
+details.shaped > summary::-webkit-details-marker { display: none; }
+details.shaped > summary::before { content: "+"; display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--line); border-radius: 50%; font-size: 12px; }
+details.shaped[open] > summary::before { content: "−"; }
+details.shaped > summary:hover { color: var(--text); }
+details.shaped .count { opacity: 0.7; }
+details.shaped[open] > summary { margin-bottom: 16px; }
+
+/* "Books to read" / "Videos to watch" */
+.queues { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.queue h2 { margin-top: 56px; }
+.queue-items { margin: 0; padding-left: 1.7em; }
+.queue-items li { padding: 3px 0; }
+.queue-items li::marker { font: 14px var(--mono); color: var(--muted); }
+.queue-items a { text-decoration-color: var(--accent); }
+.queues > .inline-edit { border-bottom: none; padding-top: 56px; }
+@media (max-width: 600px) { .queues { grid-template-columns: 1fr; } }
 .add-shaped { margin-top: 20px; }
 .idea .book-title { font-style: normal; }
 

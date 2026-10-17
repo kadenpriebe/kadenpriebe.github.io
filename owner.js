@@ -308,6 +308,16 @@
       },
     },
 
+    // "Books to read" / "Videos to watch" on the Media page: one item per line.
+    queue: {
+      fields: (v) => label(`${v.heading}, one per line, in order`,
+        area("items", v.items, 6, "Title\n[Title with a link](https://…)", "write-target")),
+      async save({ list }, { items }) {
+        const lines = items.split("\n").map((l) => l.trim().replace(/^(\d+[.)]|[-*•])\s+/, "")).filter(Boolean);
+        await updateJSON("content/queue.json", (cur) => ({ ...cur, [list]: lines }), `Edit ${list === "watch" ? "videos to watch" : "books to read"}`);
+      },
+    },
+
     // The line under the Writing / Reading / Drafts heading. These live in their own
     // file so saving the homepage intro (site.json) can never touch them.
     lede: {
@@ -353,6 +363,10 @@
       return { ref: { index, original }, values: original };
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
+    if (kind === "queue") {
+      const list = btn.dataset.i;
+      return { ref: { list }, values: { heading: btn.closest(".queue").querySelector("h2").textContent, items: ((D.queue || {})[list] || []).join("\n") } };
+    }
     if (kind === "lede") return { ref: { page: btn.dataset.lede }, values: { text: (SITE.ledes || {})[btn.dataset.lede] || "" } };
     const values = { ...SITE, links: (SITE.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") };
     return { ref: { original: values }, values };
@@ -419,6 +433,7 @@
       kind === "about" ? $("main") :
       kind === "site" ? btn.closest(".hero") :
       kind === "lede" ? btn.closest(".lede-wrap") :
+      kind === "queue" ? btn.closest(".queue") :
       btn.closest("li");
     const form = document.createElement("form");
     form.className = "inline-edit";

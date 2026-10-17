@@ -10,7 +10,7 @@ const SITE = {
 
 const NAV = [
   { href: "writing.html", label: "Writing", page: "writing" },
-  { href: "reading.html", label: "Reading", page: "reading" },
+  { href: "reading.html", label: "Media", page: "reading" },
   { href: "notes.html", label: "Drafts", page: "notes" },
   { href: "topics.html", label: "Topics", page: "topics" },
   { href: "story.html", label: "My story", page: "about" },
@@ -501,6 +501,21 @@ const ideaItem = (t) => `
     })}
   </li>`;
 
+// The numbered "Books to read" / "Videos to watch" lists on the Media page. Each item is
+// one line of text, and links work the markdown way: [Title](https://…).
+const QUEUES = [
+  { key: "read", title: "Books to read" },
+  { key: "watch", title: "Videos to watch" },
+];
+const queueList = (q, items) => `
+  <section class="queue">
+    <h2>${q.title}</h2>
+    ${items.length ? `<ol class="queue-items">${items.map((t) => `<li>${window.marked ? marked.parseInline(t) : esc(t)}</li>`).join("")}</ol>` : `<p class="empty">Nothing yet.</p>`}
+    ${ownerCtl(`data-kind="queue" data-i="${q.key}"`, { del: false, label: items.length ? "Edit list" : "Add some" })}
+  </section>`;
+// "Books that shaped me" stays open across saves once you've opened it.
+let shapedOpen = false;
+
 const noteItem = (n) => `
   <li class="note foldable${n.title ? " has-title" : ""}" data-i="${n._i}"${idAttr(n)}${n.id ? ` data-view="/drafts/${esc(n.id)}"` : ""}>
     ${metaLine(n.date, readTime(n.text), n.id && `/drafts/${n.id}`)}${FOLD}
@@ -585,7 +600,7 @@ const pages = {
       </section>
 
       <section>
-        <h2><a href="reading.html">Reading</a></h2>
+        <h2><a href="reading.html">Media consumed</a></h2>
         ${recent.length ? `<ul class="books">${recent.map(bookItem).join("")}</ul>` : `<p class="empty">Nothing yet.</p>`}
         ${more(reading.length, "reading.html", `See all ${reading.length} on the reading list`)}
       </section>
@@ -653,8 +668,12 @@ const pages = {
   },
 
   async reading(main) {
-    const [all, allShaped] = await Promise.all([load("content/reading.json"), load("content/shaped.json").catch(() => [])]);
-    window.SITE_DATA = { reading: all, shaped: allShaped };
+    const [all, allShaped, queue] = await Promise.all([
+      load("content/reading.json"),
+      load("content/shaped.json").catch(() => []),
+      load("content/queue.json").catch(() => ({})),
+    ]);
+    window.SITE_DATA = { reading: all, shaped: allShaped, queue };
     const items = indexed(all, readingIds(all)).sort(byDateDesc);
     const shaped = indexed(allShaped, shapedIds(allShaped));
     // Only offer filters for statuses something actually has.
@@ -665,17 +684,19 @@ const pages = {
       main.querySelectorAll(".filters button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === f));
     };
     main.innerHTML = `
-      <h1>Reading</h1>
+      <h1>Media consumed</h1>
       ${lede("reading")}
       <div class="filters">${filters.map((f) => `<button data-f="${f}">${f === "all" ? "All" : STATUS_LABELS[f]}</button>`).join("")}${[...items, ...shaped].some((b) => b.note) ? collapseBtn() : ""}</div>
       <ul class="books main-list"></ul>
+      ${QUEUES.some((q) => (queue[q.key] || []).length) || OWNER ? `<div class="queues">${QUEUES.map((q) => queueList(q, queue[q.key] || [])).join("")}</div>` : ""}
       ${shaped.length || OWNER ? `
-      <section class="shaped">
-        <h2>Books that shaped me</h2>
+      <details class="shaped"${shapedOpen ? " open" : ""}>
+        <summary>Books that shaped me <span class="count">${shaped.length}</span></summary>
         ${lede("shaped")}
         ${shaped.length ? `<ul class="books">${shaped.map(shapedItem).join("")}</ul>` : ""}
         ${OWNER ? `<button type="button" class="collapse-all add-shaped" data-act="new" data-kind="shaped">+ Add a book</button>` : ""}
-      </section>` : ""}`;
+      </details>` : ""}`;
+    main.querySelector(".shaped")?.addEventListener("toggle", (e) => (shapedOpen = e.target.open));
     main.querySelector(".filters").addEventListener("click", (e) => e.target.dataset.f && draw(e.target.dataset.f));
     draw("all");
   },
@@ -763,6 +784,7 @@ function showTarget() {
   const id = decodeURIComponent(location.hash.slice(1));
   const el = id && document.getElementById(id);
   if (!el || !document.querySelector("main").contains(el)) return;
+  el.closest("details")?.setAttribute("open", "");
   el.classList.add("open", "flash");
   el.querySelector(".fold")?.setAttribute("aria-expanded", "true");
   el.scrollIntoView({ block: "start" });
