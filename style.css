@@ -614,3 +614,10 @@ main.collapsed .note.foldable:not(.open) .sketch { display: none; }
 .sketch-bar .sep { align-self: stretch; width: 1px; margin: 4px 4px; background: var(--line); }
 .sketch-bar .hint { padding: 0 10px; color: var(--muted); }
 .sketch.editing.tool-move { cursor: move; }
+
+/* "Not worth writing about, but things I think about" on Writing: small passing thoughts */
+.queue.mini { margin-top: 64px; }
+.queue.mini h2 { margin-top: 0; line-height: 1.5; }
+.queue.mini .queue-items { padding-left: 1.1em; font-size: 17px; line-height: 1.5; color: var(--muted); }
+.queue.mini .queue-items li { padding: 4px 0; }
+.queue.mini .queue-items li::marker { content: "– "; }

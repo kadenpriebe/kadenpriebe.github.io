@@ -308,13 +308,14 @@
       },
     },
 
-    // "Books to read" / "Videos to watch" on the Media page: one item per line.
+    // "Books to read" / "Videos to watch" on the Media page, and the "things I think about"
+    // list on Writing: one item per line.
     queue: {
       fields: (v) => label(`${v.heading}, one per line, in order`,
-        area("items", v.items, 6, "Title\n[Title with a link](https://…)", "write-target")),
-      async save({ list }, { items }) {
+        area("items", v.items, 6, v.thoughts ? "One thought per line" : "Title\n[Title with a link](https://…)", "write-target")),
+      async save({ list, file, heading }, { items }) {
         const lines = items.split("\n").map((l) => l.trim().replace(/^(\d+[.)]|[-*•])\s+/, "")).filter(Boolean);
-        await updateJSON("content/queue.json", (cur) => ({ ...cur, [list]: lines }), `Edit ${list === "watch" ? "videos to watch" : "books to read"}`);
+        await updateJSON(`content/${file}.json`, (cur) => ({ ...cur, [list]: lines }), `Edit ${heading.toLowerCase()}`);
       },
     },
 
@@ -364,8 +365,9 @@
     }
     if (kind === "about") return { ref: {}, values: { body: D.about } };
     if (kind === "queue") {
-      const list = btn.dataset.i;
-      return { ref: { list }, values: { heading: btn.closest(".queue").querySelector("h2").textContent, items: ((D.queue || {})[list] || []).join("\n") } };
+      const list = btn.dataset.i, file = btn.dataset.file || "queue";
+      const heading = btn.closest(".queue").querySelector("h2").textContent;
+      return { ref: { list, file, heading }, values: { heading, thoughts: file === "thoughts", items: ((D[file] || {})[list] || []).join("\n") } };
     }
     if (kind === "lede") return { ref: { page: btn.dataset.lede }, values: { text: (SITE.ledes || {})[btn.dataset.lede] || "" } };
     const values = { ...SITE, links: (SITE.links || []).map((l) => `${l.label} | ${l.url}`).join("\n") };

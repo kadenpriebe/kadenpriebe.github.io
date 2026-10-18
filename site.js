@@ -507,12 +507,16 @@ const QUEUES = [
   { key: "read", title: "Books to read" },
   { key: "watch", title: "Videos to watch" },
 ];
-const queueList = (q, items) => `
-  <section class="queue">
+// `file` is the content/*.json it's saved in, under `q.key`. Bulleted unless `numbered`.
+const queueList = (q, items, { file = "queue", numbered = true, cls = "" } = {}) => {
+  const tag = numbered ? "ol" : "ul";
+  return `
+  <section class="queue ${cls}">
     <h2>${q.title}</h2>
-    ${items.length ? `<ol class="queue-items">${items.map((t) => `<li>${window.marked ? marked.parseInline(t) : esc(t)}</li>`).join("")}</ol>` : `<p class="empty">Nothing yet.</p>`}
-    ${ownerCtl(`data-kind="queue" data-i="${q.key}"`, { del: false, label: items.length ? "Edit list" : "Add some" })}
+    ${items.length ? `<${tag} class="queue-items">${items.map((t) => `<li>${window.marked ? marked.parseInline(t) : esc(t)}</li>`).join("")}</${tag}>` : `<p class="empty">Nothing yet.</p>`}
+    ${ownerCtl(`data-kind="queue" data-file="${file}" data-i="${q.key}"`, { del: false, label: items.length ? "Edit list" : "Add some" })}
   </section>`;
+};
 // "Books that shaped me" stays open across saves once you've opened it.
 let shapedOpen = false;
 
@@ -613,8 +617,13 @@ const pages = {
   },
 
   async writing(main) {
-    const [all, allIdeas] = await Promise.all([load("content/posts.json"), load("content/ideas.json").catch(() => [])]);
-    window.SITE_DATA = { posts: all, ideas: allIdeas };
+    const [all, allIdeas, thoughts] = await Promise.all([
+      load("content/posts.json"),
+      load("content/ideas.json").catch(() => []),
+      load("content/thoughts.json").catch(() => ({})),
+    ]);
+    window.SITE_DATA = { posts: all, ideas: allIdeas, thoughts };
+    const passing = thoughts.thoughts || [];
     const ideas = indexed(allIdeas, ideaIds(allIdeas));
     const sorted = [...all].sort(byDateDesc);
     const bodies = await Promise.all(sorted.map((p) => load(`content/posts/${p.slug}.md`, "text").catch(() => "")));
@@ -637,7 +646,8 @@ const pages = {
         ${lede("ideas")}
         ${ideas.length ? `<ul class="books">${ideas.map(ideaItem).join("")}</ul>` : ""}
         ${OWNER ? `<button type="button" class="collapse-all add-shaped" data-act="new" data-kind="idea">+ Add a topic</button>` : ""}
-      </section>` : ""}`;
+      </section>` : ""}
+      ${passing.length || OWNER ? queueList({ key: "thoughts", title: "Not worth writing about, but things I think about" }, passing, { file: "thoughts", numbered: false, cls: "mini" }) : ""}`;
   },
 
   async post(main) {
