@@ -17,6 +17,8 @@
 
 7) i have cookie-bite hearing loss (mid-frequency sensorineural hearing loss) a rare condition that affects about 0.7% to 1% of hearing loss cases. can gene therapy can fix this? so what are the bottlenecks in, in vivo gene therapy. see https://millenniumproblems.bio/ point number 7: Bacterial production of gene therapies.
 
+8) i am like really freaking excited about the future and i want to help build it!
+
 In conclusion, it was the perfect intersection of my innate interests/talent as well as where the world is going. 
 
 ((i think theres more context to fill in as to how exactly I landed on biotech which is more about my story, and I think I will go back and type more about my story in my About section when I feel like it. ))
