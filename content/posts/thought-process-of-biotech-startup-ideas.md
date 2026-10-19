@@ -16,7 +16,7 @@ okay, so i need an idea. In his blog about ideation (( https://brain.maxxyung.co
 
 - Foundation Model Labs are a new customer. They will buy data that will train their models. I'm interested in the biological lane. And I think there is a super interesting stack going on from how granular the level of data being collected is: 
     - multimodal behavioral data ((scales the most))
-    - multimodal behavioral data paired with psychological signals  
+    - multimodal behavioral data paired with physiological signals  
     - collecting biological multi omics data. and since i know a little more about this ill note: and there is more to indicate about like emphasis on different omics data collection ie one company may go like more all in on like transcript level vs idk further from the dna like emphasis on protein data. i think this comes down to understanding the trajectory of sequencing tech and talking to customers
         - and on collecting bio data, there is opportunity for further differentiation by the model that you pick. 
     - collecting chemical readouts of a biological process
