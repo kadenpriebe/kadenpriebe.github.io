@@ -612,6 +612,7 @@ main.collapsed .note.foldable:not(.open) .sketch { display: none; }
 .sketch-bar .swatch.a::before { background: var(--accent); }
 .sketch-bar .swatch.on { box-shadow: inset 0 0 0 1.5px var(--muted); }
 .sketch-bar .sep { align-self: stretch; width: 1px; margin: 4px 4px; background: var(--line); }
+.sketch-bar .sketch-size { min-width: 4ch; text-align: center; color: var(--muted); }
 .sketch-bar .hint { padding: 0 10px; color: var(--muted); }
 .sketch.editing.tool-move { cursor: move; }
 

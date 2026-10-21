@@ -1050,7 +1050,7 @@
     st.editEl = el;
     st.host.append(el);
     layoutSketches(form); // places this one and takes its still copy away
-    let tool = "pen", color = "", cur = null, drag = null;
+    let tool = "pen", color = "", cur = null, drag = null, textSize = 17, resizeLabel = null;
     const draw = () => {
       const html = sketchSVG(cur ? { ...s, items: [...s.items, cur] } : s);
       const svg = el.querySelector("svg");
@@ -1065,6 +1065,10 @@
       <span class="sep"></span>
       <button type="button" class="swatch on" data-ink="" title="Ink" aria-label="Ink color"></button>
       <button type="button" class="swatch a" data-ink="a" title="Accent" aria-label="Accent color"></button>
+      <span class="sep"></span>
+      <button type="button" data-size="-2" title="Make text smaller" aria-label="Make text smaller">A−</button>
+      <output class="sketch-size" aria-live="polite">17px</output>
+      <button type="button" data-size="2" title="Make text bigger" aria-label="Make text bigger">A+</button>
       <span class="sep"></span>
       <button type="button" data-tool="undo" title="Undo (⌘Z)">Undo</button>
       <button type="button" data-tool="delete">Delete</button>
@@ -1186,7 +1190,15 @@
       const old = s.items[k];
       const box = document.createElement("input");
       box.className = "sketch-text" + ((old ? old.c : color) ? " ink-a" : "");
-      box.style.cssText = `left:${x}px;top:${y - 13}px`;
+      let labelSize = sketchTextSize(old || { size: textSize });
+      const baseline = old ? nums(old.at)[1] : Math.min(s.h, y + 6);
+      const sizeBox = () => {
+        box.style.cssText = `left:${x}px;top:${baseline - labelSize - 2}px;font-size:${labelSize}px;line-height:${labelSize + 9}px;height:${labelSize + 9}px`;
+        textSize = labelSize;
+        bar.querySelector(".sketch-size").textContent = `${textSize}px`;
+      };
+      resizeLabel = (size) => { labelSize = size; sizeBox(); };
+      sizeBox();
       box.placeholder = "Type, then Enter";
       if (old) {
         box.value = old.text;
@@ -1199,11 +1211,12 @@
       const close = (keep) => {
         if (closed) return;
         closed = true;
+        resizeLabel = null;
         const t = box.value.trim();
         box.remove();
         if (old) {
-          if (keep && t !== old.text) { snap(); t ? (s.items[k] = { ...old, text: t }) : s.items.splice(k, 1); }
-        } else if (keep && t) { snap(); s.items.push({ text: t, at: `${x} ${Math.min(s.h, y + 6)}`, ...(color ? { c: color } : {}) }); }
+          if (keep && (t !== old.text || labelSize !== sketchTextSize(old))) { snap(); t ? (s.items[k] = { ...old, text: t, size: labelSize }) : s.items.splice(k, 1); }
+        } else if (keep && t) { snap(); s.items.push({ text: t, size: labelSize, at: `${x} ${baseline}`, ...(color ? { c: color } : {}) }); }
         draw();
       };
       box.addEventListener("keydown", (e) => {
@@ -1218,6 +1231,12 @@
     bar.addEventListener("click", (e) => {
       const b = e.target.closest("button");
       if (!b) return;
+      if (b.dataset.size !== undefined) {
+        textSize = sketchTextSize({ size: textSize + Number(b.dataset.size) });
+        bar.querySelector(".sketch-size").textContent = `${textSize}px`;
+        resizeLabel?.(textSize);
+        return;
+      }
       el.querySelector(".sketch-text")?.blur();
       if (b.dataset.ink !== undefined) {
         color = b.dataset.ink;

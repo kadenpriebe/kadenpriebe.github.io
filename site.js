@@ -326,6 +326,7 @@ function arrowHead(x1, y1, x2, y2) {
   const a = Math.atan2(y2 - y1, x2 - x1), end = (t) => `${(x2 - 13 * Math.cos(a + t)).toFixed(1)} ${(y2 - 13 * Math.sin(a + t)).toFixed(1)}`;
   return `M${end(0.45)}L${x2} ${y2}L${end(-0.45)}`;
 }
+const sketchTextSize = (it) => Math.max(9, Math.min(96, Number(it.size) || 17));
 function sketchSVG(s) {
   const ink = (it) => (it.c === "a" ? ' class="ink-a"' : "");
   const parts = (s.items || []).map((it, k) => {
@@ -336,7 +337,7 @@ function sketchSVG(s) {
       const [a, b, c, d] = nums(seg);
       return `<path${attrs} d="M${a} ${b}L${c} ${d}${it.arrow ? arrowHead(a, b, c, d) : ""}"/>`;
     }
-    if (it.text) { const [x, y] = nums(it.at); return `<text${attrs} x="${x}" y="${y}">${esc(it.text)}</text>`; }
+    if (it.text) { const [x, y] = nums(it.at); return `<text${attrs} x="${x}" y="${y}" style="font-size:${sketchTextSize(it)}px">${esc(it.text)}</text>`; }
     return "";
   });
   return `<svg viewBox="0 0 ${s.w} ${s.h}" width="${s.w}" height="${s.h}" aria-hidden="true">${parts.join("")}</svg>`;
@@ -373,7 +374,8 @@ function pointTop([node, i]) {
 }
 
 function placeSketches(body) {
-  body.querySelectorAll(":scope > .sketch").forEach((el) => el.remove());
+  body.querySelectorAll(":scope > .sketch, :scope > .sketch-space").forEach((el) => el.remove());
+  if (body.closest("main.collapsed .note.foldable:not(.open)")) return;
   if (!body.getClientRects().length) return; // hidden (a collapsed draft)
   const list = JSON.parse(body.dataset.sketches || "[]");
   const box = body.getBoundingClientRect(), room = document.documentElement.clientWidth;
@@ -397,11 +399,22 @@ function placeSketches(body) {
     block ? block.after(p.el) : body.append(p.el);
   }
   const top = body.getBoundingClientRect().top;
+  let bottom = 0;
   for (const p of placed.filter((p) => p.fits)) {
     const hit = find(p.s);
     const y = hit ? pointTop(hit.at) - top + hit.a.dy : p.s.y || 0;
     p.el.style.cssText = `left:${p.left}px;top:${y}px;width:${p.s.w}px;height:${p.s.h}px`;
     body.append(p.el);
+    bottom = Math.max(bottom, y + p.s.h);
+  }
+  // Absolute drawings do not contribute to the body's height. Reserve their overflow
+  // in normal flow so tags, owner controls and the next draft stay below the drawing.
+  if (bottom > 0) {
+    const space = document.createElement("div");
+    space.className = "sketch-space";
+    space.setAttribute("aria-hidden", "true");
+    body.append(space);
+    space.style.height = Math.max(0, bottom + 16 - body.getBoundingClientRect().height) + "px";
   }
 }
 
