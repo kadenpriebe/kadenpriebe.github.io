@@ -17,15 +17,33 @@
           },
           {
             "text": "Level of granularity of data",
-            "at": "20 109"
+            "at": "20 109",
+            "size": 9
           },
           {
             "text": "Behavioral Data",
-            "at": "89 28"
+            "at": "13 25",
+            "size": 9
           },
           {
             "text": "Physics infomed data",
-            "at": "7 206"
+            "at": "7 206",
+            "size": 9
+          },
+          {
+            "pen": "138 199"
+          },
+          {
+            "pen": "135 203"
+          },
+          {
+            "pen": "95 108"
+          },
+          {
+            "pen": "95 108"
+          },
+          {
+            "pen": "114 106"
           }
         ],
         "x": -3,
