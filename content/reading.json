@@ -1,6 +1,17 @@
 [
   {
     "date": "2026-10-23",
+    "title": "'I Should Have Superpowers' | Adam Draper, Boost VC Accelerate Bio",
+    "author": "",
+    "type": "Podcast",
+    "status": "finished",
+    "link": "https://youtu.be/wIS_f6O3u88?si=wHFZpXxiz55zfVOr",
+    "tags": [
+      "biotech"
+    ]
+  },
+  {
+    "date": "2026-10-23",
     "title": "A first for CRISPR: powerful prime editing alters DNA directly in the human body",
     "author": "",
     "type": "book",
