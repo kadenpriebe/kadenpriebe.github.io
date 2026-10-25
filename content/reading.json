@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-25",
+    "title": "Biological thermodynamics",
+    "author": "",
+    "type": "book",
+    "status": "reading",
+    "link": "https://en.wikipedia.org/wiki/Biological_thermodynamics"
+  },
+  {
+    "date": "2026-10-25",
     "title": "Morphogenesis",
     "author": "",
     "type": "book",
