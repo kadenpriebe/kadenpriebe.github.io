@@ -1,6 +1,17 @@
 [
   {
     "date": "2026-10-25",
+    "title": "A billion years of evolution in a single afternoon — George Church",
+    "author": "Dwarkesh Patel",
+    "type": "Podcast",
+    "status": "reading",
+    "link": "https://www.youtube.com/watch?v=olmHHxFQwxo",
+    "tags": [
+      "biotech"
+    ]
+  },
+  {
+    "date": "2026-10-25",
     "title": "Biological thermodynamics",
     "author": "",
     "type": "book",
